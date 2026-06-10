@@ -1,0 +1,69 @@
+import java.text.SimpleDateFormat
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url = "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath 'com.google.gradle:osdetector-gradle-plugin:1.7.3'
+        classpath 'org.javamodularity:moduleplugin:2.0.0'
+    }
+}
+
+plugins {
+    id 'java-library'
+    id 'com.google.osdetector'           version '1.7.3'
+    id 'org.javamodularity.moduleplugin' version '2.0.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+Date buildTimeAndDate = new Date()
+ext {
+    buildDate       = new SimpleDateFormat('yyyy-MM-dd').format(buildTimeAndDate)
+    buildTime       = new SimpleDateFormat('HH:mm:ss.SSSZ').format(buildTimeAndDate)
+    platform        = osdetector.os == 'osx' ? osdetector.arch == 'aarch_64' ? 'mac-aarch64' : 'mac' : osdetector.os == 'windows' ? 'win' : osdetector.os == 'linux' ? osdetector.arch == 'aarch_64' ? 'linux-aarch64' : 'linux' : osdetector.os
+}
+
+dependencies {
+    implementation "org.openjfx:javafx-base:${javafxVersion}:${platform}"
+    implementation "org.openjfx:javafx-graphics:${javafxVersion}:${platform}"
+    implementation "org.openjfx:javafx-controls:${javafxVersion}:${platform}"
+    implementation "org.openjfx:javafx-swing:${javafxVersion}:${platform}"
+}
+
+tasks.register('runExample', JavaExec) {
+    mainClass   = 'eu.hansolo.trayfx.example.TrayFXExample'
+    classpath   = sourceSets.main.runtimeClasspath
+
+    doFirst {
+        def mods = classpath.filter { f -> f.name.contains('javafx') }.asPath
+        jvmArgs "--module-path=${mods}"
+        jvmArgs '--add-modules=javafx.base,javafx.graphics,javafx.controls,javafx.swing'
+    }
+
+    // apple.awt.UIElement=true tells the macOS window server that this process
+    // is allowed to own menu bar items without appearing in the Dock.
+    jvmArgs '-Dapple.awt.UIElement=true'
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title'  : 'TrayFX',
+            'Implementation-Version': version,
+            'Implementation-Vendor' : 'Gerrit Grunwald'
+        )
+    }
+}
+
+sourceSets {
+    main {
+        output.resourcesDir = file('build/classes/java/main')
+    }
+}
