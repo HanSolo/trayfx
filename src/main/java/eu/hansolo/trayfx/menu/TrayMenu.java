@@ -18,7 +18,6 @@ import java.util.List;
  * }</pre>
  */
 public final class TrayMenu {
-
     private final List<MenuItem> items;
 
 
@@ -27,34 +26,21 @@ public final class TrayMenu {
     }
 
 
-    public static TrayMenu of(final MenuItem... items) {
-        return new TrayMenu(List.of(items));
-    }
+    public static TrayMenu of(final MenuItem... items) { return new TrayMenu(List.of(items)); }
 
-    public static TrayMenu of(final List<MenuItem> items) {
-        return new TrayMenu(items);
-    }
+    public static TrayMenu of(final List<MenuItem> items) { return new TrayMenu(items); }
 
-    public static Builder builder() {
-        return new Builder();
-    }
+    public static Builder builder() { return new Builder(); }
 
 
-    // ── Accessors ────────────────────────────────────────────────────────────
 
-    public List<MenuItem> getItems() {
-        return Collections.unmodifiableList(items);
-    }
+    public List<MenuItem> getItems() { return Collections.unmodifiableList(items); }
 
-    public boolean isEmpty() {
-        return items.isEmpty();
-    }
+    public boolean isEmpty() { return items.isEmpty(); }
 
 
-    // ── Builder ──────────────────────────────────────────────────────────────
 
     public static final class Builder {
-
         private final List<MenuItem> items = new ArrayList<>();
 
         public Builder item(final MenuItem item) {
@@ -67,8 +53,6 @@ public final class TrayMenu {
             return this;
         }
 
-        public TrayMenu build() {
-            return new TrayMenu(items);
-        }
+        public TrayMenu build() { return new TrayMenu(items); }
     }
 }

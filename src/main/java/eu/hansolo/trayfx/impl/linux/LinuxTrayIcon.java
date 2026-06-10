@@ -29,12 +29,9 @@ import java.awt.image.BufferedImage;
  * {@link UnsupportedOperationException} is thrown from {@code nativeInstall}.
  */
 public final class LinuxTrayIcon extends AbstractTrayIcon {
-
     private volatile java.awt.TrayIcon awtTrayIcon;
 
-
-    @Override
-    protected void nativeInstall() {
+    @Override protected void nativeInstall() {
         if (!SystemTray.isSupported()) {
             throw new UnsupportedOperationException(
                 "SystemTray is not supported in this Linux environment. " +
@@ -55,8 +52,7 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUninstall() {
+    @Override protected void nativeUninstall() {
         offThread(() -> {
             final java.awt.TrayIcon icon = awtTrayIcon;
             awtTrayIcon = null;
@@ -64,26 +60,22 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUpdateIcon(final Image icon) {
+    @Override protected void nativeUpdateIcon(final Image icon) {
         offThread(() -> {
             final java.awt.TrayIcon t = awtTrayIcon;
             if (t != null) { t.setImage(toBufferedImage(icon)); }
         });
     }
 
-    @Override
-    protected void nativeUpdateText(final String text, final Color color) {
+    @Override protected void nativeUpdateText(final String text, final Color color) {
         offThread(() -> {
             final java.awt.TrayIcon t = awtTrayIcon;
             if (t != null) { t.setToolTip(text); }
         });
     }
 
-    @Override
-    protected void nativeUpdateMenu(final TrayMenu menu) {
-        offThread(this::applyAwtMenu);
-    }
+    @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyAwtMenu); }
+
 
     private void applyAwtMenu() {
         final java.awt.TrayIcon t = awtTrayIcon;
@@ -110,9 +102,7 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
     }
 
     private static BufferedImage toBufferedImage(final Image fxImage) {
-        if (fxImage == null) {
-            return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        }
+        if (fxImage == null) { return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB); }
         final int w = (int) fxImage.getWidth();
         final int h = (int) fxImage.getHeight();
         final BufferedImage argb = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);

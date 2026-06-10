@@ -10,7 +10,6 @@ import java.util.Objects;
  * Use {@link MenuItem#separator()} to create a visual divider between items.
  */
 public final class MenuItem {
-
     private final String   label;
     private final Image    icon;
     private final Runnable action;
@@ -26,8 +25,6 @@ public final class MenuItem {
         this.enabled   = true;
     }
 
-
-    // ── Factory methods ──────────────────────────────────────────────────────
 
     public static MenuItem of(final String label, final Runnable action) {
         Objects.requireNonNull(label,  "label must not be null");
@@ -46,13 +43,15 @@ public final class MenuItem {
     }
 
 
-    // ── Accessors ────────────────────────────────────────────────────────────
+    public String getLabel() { return label; }
 
-    public String   getLabel()     { return label; }
-    public Image    getIcon()      { return icon; }
-    public Runnable getAction()    { return action; }
-    public boolean  isSeparator()  { return separator; }
-    public boolean  isEnabled()    { return enabled; }
+    public Image getIcon() { return icon; }
+
+    public Runnable getAction() { return action; }
+
+    public boolean isSeparator() { return separator; }
+
+    public boolean isEnabled() { return enabled; }
 
     public MenuItem enabled(final boolean enabled) {
         this.enabled = enabled;
@@ -64,7 +63,6 @@ public final class MenuItem {
             action.run();
         }
     }
-
 
     @Override public String toString() {
         if (separator) { return "MenuItem[SEPARATOR]"; }

@@ -25,14 +25,9 @@ import java.awt.image.BufferedImage;
  * via {@code Platform.runLater}.
  */
 public final class MacOSTrayIcon extends AbstractTrayIcon {
-
     private volatile java.awt.TrayIcon awtTrayIcon;
 
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────
-
-    @Override
-    protected void nativeInstall() {
+    @Override protected void nativeInstall() {
         offThread(() -> {
             try {
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
@@ -40,9 +35,7 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
                 if (getText() != null) { awtTrayIcon.setToolTip(getText()); }
                 applyAwtMenu();
                 SystemTray.getSystemTray().add(awtTrayIcon);
-                // Signal the base class that native init is complete —
-                // any queued updates (setIcon, setText, setMenu called before
-                // install finished) will now be drained and applied in order.
+                // Signal the base class that native init is complete any queued updates (setIcon, setText, setMenu called before install finished) will now be drained and applied in order.
                 onNativeReady();
             } catch (AWTException e) {
                 throw new RuntimeException("Failed to install tray icon", e);
@@ -50,8 +43,7 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUninstall() {
+    @Override protected void nativeUninstall() {
         offThread(() -> {
             final java.awt.TrayIcon icon = awtTrayIcon;
             awtTrayIcon = null;
@@ -59,35 +51,22 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
         });
     }
 
-
-    // ── Icon ──────────────────────────────────────────────────────────────
-
-    @Override
-    protected void nativeUpdateIcon(final Image icon) {
+    @Override protected void nativeUpdateIcon(final Image icon) {
         offThread(() -> {
             final java.awt.TrayIcon t = awtTrayIcon;
             if (t != null) { t.setImage(toBufferedImage(icon)); }
         });
     }
 
-
-    // ── Text ──────────────────────────────────────────────────────────────
-
-    @Override
-    protected void nativeUpdateText(final String text, final Color color) {
+    @Override protected void nativeUpdateText(final String text, final Color color) {
         offThread(() -> {
             final java.awt.TrayIcon t = awtTrayIcon;
             if (t != null) { t.setToolTip(text); }
         });
     }
 
+    @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyAwtMenu); }
 
-    // ── Menu ──────────────────────────────────────────────────────────────
-
-    @Override
-    protected void nativeUpdateMenu(final TrayMenu menu) {
-        offThread(this::applyAwtMenu);
-    }
 
     private void applyAwtMenu() {
         final java.awt.TrayIcon t = awtTrayIcon;
@@ -113,13 +92,8 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
         t.setPopupMenu(popup);
     }
 
-
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     private static BufferedImage toBufferedImage(final Image fxImage) {
-        if (fxImage == null) {
-            return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        }
+        if (fxImage == null) { return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB); }
         final int w = (int) fxImage.getWidth();
         final int h = (int) fxImage.getHeight();
         final BufferedImage argb = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);

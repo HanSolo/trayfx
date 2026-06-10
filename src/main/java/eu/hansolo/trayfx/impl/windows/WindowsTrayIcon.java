@@ -24,12 +24,9 @@ import java.awt.image.BufferedImage;
  * using {@link eu.hansolo.trayfx.TrayIconGraphics}.
  */
 public final class WindowsTrayIcon extends AbstractTrayIcon {
-
     private volatile java.awt.TrayIcon awtTrayIcon;
 
-
-    @Override
-    protected void nativeInstall() {
+    @Override protected void nativeInstall() {
         offThread(() -> {
             try {
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
@@ -44,8 +41,7 @@ public final class WindowsTrayIcon extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUninstall() {
+    @Override protected void nativeUninstall() {
         offThread(() -> {
             final java.awt.TrayIcon icon = awtTrayIcon;
             awtTrayIcon = null;
@@ -53,26 +49,22 @@ public final class WindowsTrayIcon extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUpdateIcon(final Image icon) {
+    @Override protected void nativeUpdateIcon(final Image icon) {
         offThread(() -> {
             final java.awt.TrayIcon t = awtTrayIcon;
             if (t != null) { t.setImage(toBufferedImage(icon)); }
         });
     }
 
-    @Override
-    protected void nativeUpdateText(final String text, final Color color) {
+    @Override protected void nativeUpdateText(final String text, final Color color) {
         offThread(() -> {
             final java.awt.TrayIcon t = awtTrayIcon;
             if (t != null) { t.setToolTip(text); }
         });
     }
 
-    @Override
-    protected void nativeUpdateMenu(final TrayMenu menu) {
-        offThread(this::applyAwtMenu);
-    }
+    @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyAwtMenu); }
+
 
     private void applyAwtMenu() {
         final java.awt.TrayIcon t = awtTrayIcon;
