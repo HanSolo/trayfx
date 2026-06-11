@@ -39,31 +39,27 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         if (!SystemTray.isSupported()) {
             throw new UnsupportedOperationException(
                 "SystemTray is not supported in this Linux environment. " +
-                "Wayland compositors may require XWayland or a compatible " +
-                "StatusNotifierItem implementation.");
+                "Wayland compositors may require XWayland.");
         }
         offThread(() -> {
             try {
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
-                awtTrayIcon.setImageAutoSize(true);
+                awtTrayIcon.setImageAutoSize(false); // we pre-scale to exact tray size
+
                 if (getText() != null) { awtTrayIcon.setToolTip(getText()); }
 
-                // Rebuild menu fresh on every right-click to work around the
-                // AWT/GTK PopupMenu reuse bug where the menu shows incomplete
-                // or not at all on second and subsequent invocations.
                 awtTrayIcon.addMouseListener(new MouseAdapter() {
                     @Override
-                    public void mousePressed(final MouseEvent e) {
-                        if (e.isPopupTrigger()) { showFreshMenu(e); }
+                    public void mouseClicked(final MouseEvent e) {
+                        if (e.getButton() == MouseEvent.BUTTON1) {
+                            // Left click — fire handler
+                            fireLeftClick();
+                        } else if (e.getButton() == MouseEvent.BUTTON3) {
+                            // Right click — show fresh menu
+                            showFreshMenu(e);
                     }
-                    @Override
-                    public void mouseReleased(final MouseEvent e) {
-                        if (e.isPopupTrigger()) { showFreshMenu(e); }
                     }
                 });
-
-                // Left-click handler
-                awtTrayIcon.addActionListener(e -> fireLeftClick());
 
                 SystemTray.getSystemTray().add(awtTrayIcon);
                 onNativeReady();
@@ -97,15 +93,52 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
 
     @Override
     protected void nativeUpdateMenu(final TrayMenu menu) {
-        // Nothing to do here — menu is built fresh on each click in showFreshMenu()
+        // Menu is built fresh on each right-click in showFreshMenu()
     }
 
     private void showFreshMenu(final MouseEvent e) {
         final TrayMenu menu = getMenu();
         if (menu == null || menu.isEmpty()) { return; }
 
-        // Build a brand-new PopupMenu each time — reusing the same instance
-        // causes GTK to show a broken/empty menu on second invocation
+        final java.awt.TrayIcon t = awtTrayIcon;
+        if (t == null) { return; }
+
+        // Build a fresh PopupMenu each time — GTK corrupts reused instances
+        final java.awt.PopupMenu popup = buildPopupMenu(menu);
+
+        // Set it on the tray icon — AWT/GTK will show it at the click location
+        t.setPopupMenu(popup);
+
+        // Simulate a right-click on the tray icon to trigger the popup.
+        // We use Robot to inject the right-click event since there is no
+        // direct API to programmatically show a TrayIcon's PopupMenu on Linux.
+        try {
+            final java.awt.Robot robot = new java.awt.Robot();
+            robot.mouseMove(e.getXOnScreen(), e.getYOnScreen());
+            robot.mousePress(java.awt.event.InputEvent.BUTTON3_DOWN_MASK);
+            robot.mouseRelease(java.awt.event.InputEvent.BUTTON3_DOWN_MASK);
+        } catch (java.awt.AWTException ex) {
+            // Robot not available — fall back to direct popup.show()
+            showPopupViaFrame(popup, e);
+        }
+    }
+
+    private void showPopupViaFrame(final java.awt.PopupMenu popup, final MouseEvent e) {
+        final java.awt.Frame frame = new java.awt.Frame();
+        frame.setUndecorated(true);
+        frame.setSize(1, 1);
+        frame.setLocation(e.getXOnScreen(), e.getYOnScreen());
+        frame.add(popup);
+        frame.setVisible(true);
+        popup.show(frame, 0, 0);
+        frame.addWindowFocusListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowLostFocus(final java.awt.event.WindowEvent we) {
+                frame.dispose();
+            }
+        });
+    }
+
+    private java.awt.PopupMenu buildPopupMenu(final TrayMenu menu) {
         final java.awt.PopupMenu popup = new java.awt.PopupMenu();
         for (final MenuItem item : menu.getItems()) {
             if (item.isSeparator()) {
@@ -117,38 +150,43 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
                 popup.add(awtItem);
             }
         }
-
-        // Attach fresh menu, show it, then detach — prevents the stale
-        // native menu handle from being held between invocations
-        final java.awt.TrayIcon t = awtTrayIcon;
-        if (t == null) { return; }
-        t.setPopupMenu(popup);
-
-        // Use a tiny hidden Frame as the popup parent — required on some
-        // Linux desktop environments for PopupMenu.show() to work correctly
-        final java.awt.Frame frame = new java.awt.Frame();
-        frame.setUndecorated(true);
-        frame.setSize(1, 1);
-        frame.setLocation(e.getXOnScreen(), e.getYOnScreen());
-        frame.setVisible(true);
-        popup.show(frame, 0, 0);
-        frame.addWindowFocusListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowLostFocus(final java.awt.event.WindowEvent we) {
-                frame.dispose();
-            }
-        });
+        return popup;
     }
 
     private static BufferedImage toBufferedImage(final Image fxImage) {
-        if (fxImage == null) { return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB); }
-        // Use 64×64 as the source size — large enough that downscaling by
-        // the tray looks crisp, avoiding the blurriness of upscaling a small image
-        final int w = (int) fxImage.getWidth();
-        final int h = (int) fxImage.getHeight();
-        final BufferedImage argb = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        SwingFXUtils.fromFXImage(fxImage, argb);
-        return argb;
+        if (fxImage == null) {
+            return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        }
+
+        // Convert JavaFX image to BufferedImage
+        final int srcW = (int) fxImage.getWidth();
+        final int srcH = (int) fxImage.getHeight();
+        final BufferedImage src = new BufferedImage(srcW, srcH, BufferedImage.TYPE_INT_ARGB);
+        SwingFXUtils.fromFXImage(fxImage, src);
+
+        // Scale to the exact size the tray expects
+        final int traySize = getTrayIconSize();
+        if (srcW == traySize && srcH == traySize) { return src; }
+
+        final BufferedImage scaled = new BufferedImage(traySize, traySize, BufferedImage.TYPE_INT_ARGB);
+        final java.awt.Graphics2D g = scaled.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                           java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                           java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                           java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.drawImage(src, 0, 0, traySize, traySize, null);
+        g.dispose();
+        return scaled;
+    }
+
+    private static int getTrayIconSize() {
+        if (SystemTray.isSupported()) {
+            final java.awt.Dimension d = SystemTray.getSystemTray().getTrayIconSize();
+            if (d != null && d.width > 0) { return d.width; }
+        }
+        return 22;
     }
 
     private static void offThread(final Runnable task) {
