@@ -9,8 +9,11 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
 import java.awt.AWTException;
+import java.awt.Dimension;
 import java.awt.Frame;
+import java.awt.Graphics2D;
 import java.awt.PopupMenu;
+import java.awt.RenderingHints;
 import java.awt.SystemTray;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -23,21 +26,22 @@ import java.awt.image.BufferedImage;
  * Linux implementation of {@link eu.hansolo.trayfx.TrayIcon}.
  *
  * <h2>Icon sizing</h2>
- * We use {@code setImageAutoSize(true)} with a 48×48 source image.
- * {@code SystemTray.getTrayIconSize()} is unreliable across Linux DEs and
- * VM environments — it may return values that don't match the actual rendered
- * slot. Providing a moderately large image and letting AWT scale it down
- * produces correct results across GNOME, KDE, XFCE, and Parallels VMs.
+ * {@code setImageAutoSize(true)} on Linux/GTK crops rather than scales —
+ * a confirmed AWT bug. The only reliable approach is to pre-scale the image
+ * to exactly the size returned by {@code SystemTray.getTrayIconSize()} and
+ * set {@code setImageAutoSize(false)}. The tray size is queried once during
+ * install and cached in {@code traySize}.
  *
  * <h2>Menu</h2>
- * {@code mouseClicked} is unreliable on Linux system tray icons — we use
- * {@code mousePressed} with explicit {@code BUTTON1}/{@code BUTTON3} checks.
+ * {@code mouseClicked} is unreliable on Linux tray icons — {@code mousePressed}
+ * with explicit {@code BUTTON1}/{@code BUTTON3} checks is used instead.
  * The menu is rebuilt fresh on every right-click to avoid the AWT/GTK
- * stale-handle bug where reused menus show empty on second invocation.
+ * stale-handle bug.
  */
 public final class LinuxTrayIcon extends AbstractTrayIcon {
 
     private volatile java.awt.TrayIcon awtTrayIcon;
+    private          int               traySize = 24; // default; overwritten in install
 
 
     @Override
@@ -49,12 +53,15 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         }
         offThread(() -> {
             try {
+                // Query the real tray slot size before creating the icon —
+                // this is the pixel size AWT will render into
+                final Dimension d = SystemTray.getSystemTray().getTrayIconSize();
+                if (d != null && d.width > 0) { traySize = d.width; }
+
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
-                // setImageAutoSize(true) lets AWT/GTK scale our 48×48 image
-                // down to whatever the actual tray slot size is at runtime.
-                // This is more reliable than getTrayIconSize() which returns
-                // inconsistent values across DEs and VM environments.
-                awtTrayIcon.setImageAutoSize(true);
+                // setImageAutoSize(false) — we pre-scale to exact tray size.
+                // setImageAutoSize(true) crops on Linux/GTK instead of scaling.
+                awtTrayIcon.setImageAutoSize(false);
 
                 if (getText() != null) { awtTrayIcon.setToolTip(getText()); }
 
@@ -107,6 +114,9 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         // Menu is rebuilt fresh on each right-click in showFreshMenu()
     }
 
+
+    // ── Menu ─────────────────────────────────────────────────────────────
+
     private void showFreshMenu(final MouseEvent e) {
         final TrayMenu menu = getMenu();
         if (menu == null || menu.isEmpty()) { return; }
@@ -151,15 +161,30 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
 
     // ── Image conversion ─────────────────────────────────────────────────
 
-    private static BufferedImage toBufferedImage(final Image fxImage) {
+    private BufferedImage toBufferedImage(final Image fxImage) {
+        final int size = traySize;
         if (fxImage == null) {
-            return new BufferedImage(48, 48, BufferedImage.TYPE_INT_ARGB);
+            return new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         }
-        final int w = (int) fxImage.getWidth();
-        final int h = (int) fxImage.getHeight();
-        final BufferedImage argb = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        SwingFXUtils.fromFXImage(fxImage, argb);
-        return argb;
+
+        // Convert JavaFX image to BufferedImage at source size
+        final int srcW = (int) fxImage.getWidth();
+        final int srcH = (int) fxImage.getHeight();
+        final BufferedImage src = new BufferedImage(srcW, srcH, BufferedImage.TYPE_INT_ARGB);
+        SwingFXUtils.fromFXImage(fxImage, src);
+
+        // Already correct size — return as-is
+        if (srcW == size && srcH == size) { return src; }
+
+        // Scale to exact tray size using bicubic interpolation
+        final BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        final Graphics2D g = scaled.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING,     RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
+        g.drawImage(src, 0, 0, size, size, null);
+        g.dispose();
+        return scaled;
     }
 
     private static void offThread(final Runnable task) {
