@@ -27,7 +27,8 @@ Date buildTimeAndDate = new Date()
 ext {
     buildDate       = new SimpleDateFormat('yyyy-MM-dd').format(buildTimeAndDate)
     buildTime       = new SimpleDateFormat('HH:mm:ss.SSSZ').format(buildTimeAndDate)
-    platform        = osdetector.os == 'osx' ? osdetector.arch == 'aarch_64' ? 'mac-aarch64' : 'mac' : osdetector.os == 'windows' ? 'win' : osdetector.os == 'linux' ? osdetector.arch == 'aarch_64' ? 'linux-aarch64' : 'linux' : osdetector.os
+    isLinux         = osdetector.os == 'linux'
+    platform        = osdetector.os == 'osx' ? osdetector.arch == 'aarch_64' ? 'mac-aarch64' : 'mac' : osdetector.os == 'windows' ? 'win' : isLinux ? osdetector.arch == 'aarch_64' ? 'linux-aarch64' : 'linux' : osdetector.os
 }
 
 dependencies {
@@ -35,6 +36,24 @@ dependencies {
     implementation "org.openjfx:javafx-graphics:${javafxVersion}:${platform}"
     implementation "org.openjfx:javafx-controls:${javafxVersion}:${platform}"
     implementation "org.openjfx:javafx-swing:${javafxVersion}:${platform}"
+
+    // D-Bus only on Linux — macOS/Windows never see these classes
+    if (isLinux) {
+        implementation 'com.github.hypfvieh:dbus-java-core:5.1.0'
+        implementation 'com.github.hypfvieh:dbus-java-transport-junixsocket:5.1.0'
+    }
+}
+
+// Exclude Linux D-Bus classes from non-Linux builds at compile time
+if (!isLinux) {
+    sourceSets.main.java.exclude(
+        'eu/hansolo/trayfx/impl/linux/LinuxDbusImpl.java',
+        'eu/hansolo/trayfx/impl/linux/StatusNotifierItemInterface.java',
+        'eu/hansolo/trayfx/impl/linux/StatusNotifierItemExport.java',
+        'eu/hansolo/trayfx/impl/linux/StatusNotifierWatcherInterface.java',
+        'eu/hansolo/trayfx/impl/linux/DbusMenuInterface.java',
+        'eu/hansolo/trayfx/impl/linux/DbusMenuExport.java'
+    )
 }
 
 tasks.register('runExample', JavaExec) {
@@ -47,8 +66,6 @@ tasks.register('runExample', JavaExec) {
         jvmArgs '--add-modules=javafx.base,javafx.graphics,javafx.controls,javafx.swing'
     }
 
-    // apple.awt.UIElement=true tells the macOS window server that this process
-    // is allowed to own menu bar items without appearing in the Dock.
     jvmArgs '-Dapple.awt.UIElement=true'
 }
 

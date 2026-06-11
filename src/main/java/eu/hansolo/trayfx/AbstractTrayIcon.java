@@ -131,4 +131,13 @@ public abstract class AbstractTrayIcon implements TrayIcon {
         final Consumer<TrayEvent> h = onRightClick;
         if (h != null) { h.accept(new TrayEvent(TrayEventType.RIGHT_CLICK)); }
     }
+
+    /**
+     * Static bridge methods so platform impls in sub-packages can call
+     * protected methods on a parent instance without reflection.
+     * Used by {@code LinuxDbusImpl} to call back into {@code LinuxTrayIcon}.
+     */
+    public static void doFireLeftClick(final AbstractTrayIcon icon)  { icon.fireLeftClick(); }
+    public static void doFireRightClick(final AbstractTrayIcon icon) { icon.fireRightClick(); }
+    public static void doOnNativeReady(final AbstractTrayIcon icon)  { icon.onNativeReady(); }
 }
