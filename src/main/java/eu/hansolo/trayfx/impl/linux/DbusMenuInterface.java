@@ -23,11 +23,10 @@ public interface DbusMenuInterface extends DBusInterface {
 
     /**
      * Returns the layout starting from parentId.
-     * Result is a struct: (revision, layout-item) but we return as Variant
-     * to avoid dbus-java introspection issues with nested structs.
+     * Returns {@code (revision, (id, props, children))} as a proper D-Bus struct.
      */
-    Map<String, Variant<?>> GetLayout(int parentId, int recursionDepth,
-                                      List<String> propertyNames);
+    GetLayoutResult GetLayout(int parentId, int recursionDepth,
+                              List<String> propertyNames);
 
     /** Returns properties for a list of item IDs. */
     Map<String, Variant<?>> GetGroupProperties(List<Integer> ids,

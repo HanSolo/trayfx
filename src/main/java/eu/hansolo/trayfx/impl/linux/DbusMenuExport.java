@@ -53,30 +53,36 @@ public final class DbusMenuExport implements DbusMenuInterface {
     // details via GetGroupProperties when it needs them.
 
     @Override
-    public Map<String, Variant<?>> GetLayout(final int          parentId,
-                                              final int          recursionDepth,
-                                              final List<String> propertyNames) {
-        final Map<String, Variant<?>> result = new HashMap<>();
-        result.put("revision", new Variant<>(new UInt32(revision.get())));
-
-        // Build a simple layout: root node with children as flat int list
-        // AppIndicator reads this to know how many items exist
-        final Map<String, Variant<?>> rootProps = new HashMap<>();
-        rootProps.put("children-display", new Variant<>("submenu"));
-
-        // Return root with empty children — AppIndicator will call
-        // GetGroupProperties to get item details
-        final List<Integer> childIds = new ArrayList<>();
+    public GetLayoutResult GetLayout(final int          parentId,
+                                      final int          recursionDepth,
+                                      final List<String> propertyNames) {
         final TrayMenu m = menu;
+        final List<Variant<?>> children = new ArrayList<>();
+
         if (m != null) {
-            for (int i = 1; i <= m.getItems().size(); i++) {
-                childIds.add(i);
+            int id = 1;
+            for (final MenuItem item : m.getItems()) {
+                final Map<String, Variant<?>> props = new HashMap<>();
+                if (item.isSeparator()) {
+                    props.put("type",    new Variant<>("separator"));
+                    props.put("enabled", new Variant<>(Boolean.FALSE));
+                } else {
+                    props.put("label",   new Variant<>(item.getLabel()));
+                    props.put("enabled", new Variant<>(item.isEnabled()));
+                    props.put("visible", new Variant<>(Boolean.TRUE));
+                }
+                final MenuLayoutItem child = new MenuLayoutItem(id, props, Collections.emptyList());
+                children.add(new Variant<>(child, "(ia{sv}av)"));
+                id++;
             }
         }
-        rootProps.put("children", new Variant<>(childIds, "ai"));
 
-        result.put("layout", new Variant<>(rootProps, "a{sv}"));
-        return result;
+        // Root item
+        final Map<String, Variant<?>> rootProps = new HashMap<>();
+        rootProps.put("children-display", new Variant<>("submenu"));
+        final MenuLayoutItem root = new MenuLayoutItem(0, rootProps, children);
+
+        return new GetLayoutResult(new UInt32(revision.get()), root);
     }
 
 
