@@ -3,9 +3,7 @@ import java.text.SimpleDateFormat
 buildscript {
     repositories {
         mavenCentral()
-        maven {
-            url = "https://plugins.gradle.org/m2/"
-        }
+        maven { url = "https://plugins.gradle.org/m2/" }
     }
     dependencies {
         classpath 'com.google.gradle:osdetector-gradle-plugin:1.7.3'
@@ -37,23 +35,13 @@ dependencies {
     implementation "org.openjfx:javafx-controls:${javafxVersion}:${platform}"
     implementation "org.openjfx:javafx-swing:${javafxVersion}:${platform}"
 
-    // D-Bus only on Linux — macOS/Windows never see these classes
+    // dbus-java is needed at compile time on all platforms (for module-info.java
+    // requires static) but only included at runtime on Linux.
+    compileOnly 'com.github.hypfvieh:dbus-java-core:5.1.0'
     if (isLinux) {
-        implementation 'com.github.hypfvieh:dbus-java-core:5.1.0'
-        implementation 'com.github.hypfvieh:dbus-java-transport-junixsocket:5.1.0'
+        runtimeOnly 'com.github.hypfvieh:dbus-java-core:5.1.0'
+        runtimeOnly 'com.github.hypfvieh:dbus-java-transport-junixsocket:5.1.0'
     }
-}
-
-// Exclude Linux D-Bus classes from non-Linux builds at compile time
-if (!isLinux) {
-    sourceSets.main.java.exclude(
-        'eu/hansolo/trayfx/impl/linux/LinuxDbusImpl.java',
-        'eu/hansolo/trayfx/impl/linux/StatusNotifierItemInterface.java',
-        'eu/hansolo/trayfx/impl/linux/StatusNotifierItemExport.java',
-        'eu/hansolo/trayfx/impl/linux/StatusNotifierWatcherInterface.java',
-        'eu/hansolo/trayfx/impl/linux/DbusMenuInterface.java',
-        'eu/hansolo/trayfx/impl/linux/DbusMenuExport.java'
-    )
 }
 
 tasks.register('runExample', JavaExec) {
