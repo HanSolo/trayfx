@@ -41,7 +41,7 @@ import java.awt.image.BufferedImage;
 public final class LinuxTrayIcon extends AbstractTrayIcon {
 
     private volatile java.awt.TrayIcon awtTrayIcon;
-    private          int               traySize = 24; // default; overwritten in install
+    private          int               traySize = 22; // updated in install; we use slot-2 to force upscale
 
 
     @Override
@@ -56,13 +56,15 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
                 // Query the real tray slot size before creating the icon —
                 // this is the pixel size AWT will render into
                 final Dimension d = SystemTray.getSystemTray().getTrayIconSize();
-                if (d != null && d.width > 0) { traySize = d.width; }
+                if (d != null && d.width > 0) { traySize = Math.max(1, d.width - 2); }
                 System.out.println("[TrayFX] nativeInstall: getTrayIconSize=" + d + " traySize=" + traySize);
 
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
-                // setImageAutoSize(false) — we pre-scale to exact tray size.
-                // setImageAutoSize(true) crops on Linux/GTK instead of scaling.
-                awtTrayIcon.setImageAutoSize(false);
+                // On this GTK configuration setImageAutoSize(false) with a 24×24
+                // image still renders cropped. Use setImageAutoSize(true) with a
+                // source image slightly smaller than the tray slot so GTK scales
+                // up rather than cropping down.
+                awtTrayIcon.setImageAutoSize(true);
 
                 if (getText() != null) { awtTrayIcon.setToolTip(getText()); }
 
