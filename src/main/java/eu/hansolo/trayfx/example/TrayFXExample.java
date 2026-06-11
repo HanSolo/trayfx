@@ -114,30 +114,35 @@ public class TrayFXExample extends Application {
     private void hideWindow()  { stage.hide(); }
 
     private void setClockIcon(final Color accent) {
-        // Back to the animated clock
-        tray.setIcon(buildClockIcon(LocalTime.now(), accent));
-        tray.setTextColor(accent);
-        Platform.runLater(() -> setStatus("Clock icon"));
+        Platform.runLater(() -> {
+            tray.setIcon(buildClockIcon(LocalTime.now(), accent));
+            tray.setTextColor(accent);
+            setStatus("Clock icon");
+        });
     }
 
     private void setGlucose(final String value, final Color bgColor) {
-        final Image icon = TrayIconGraphics.create()
-            .text(value)
-            .textColor(Color.WHITE)
-            .background(bgColor, BackgroundShape.ROUNDED_RECT)
-            .shapeInset(1)          // 1px gap all around — fills almost the full icon
-            .cornerRadius(0.40)
-            .build();
-        tray.setIcon(icon);
-        tray.setText(value);
-        Platform.runLater(() -> setStatus("Glucose: " + value));
+        Platform.runLater(() -> {
+            final Image icon = TrayIconGraphics.create()
+                                               .text(value)
+                                               .textColor(Color.WHITE)
+                                               .background(bgColor, BackgroundShape.ROUNDED_RECT)
+                                               .shapeInset(1)
+                                               .cornerRadius(0.40)
+                                               .build();
+            tray.setIcon(icon);
+            tray.setText(value);
+            setStatus("Glucose: " + value);
+        });
     }
 
     private void updateClock() {
         final LocalTime now = LocalTime.now();
-        // Safe from background scheduler thread
-        tray.setIcon(buildClockIcon(now));
-        tray.setText(now.format(TIME_FMT));
+        // buildClockIcon uses JavaFX Canvas — must run on FX thread
+        Platform.runLater(() -> {
+            tray.setIcon(buildClockIcon(now));
+            tray.setText(now.format(TIME_FMT));
+        });
     }
 
     private void quit() {
