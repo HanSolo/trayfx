@@ -4,6 +4,7 @@ import org.freedesktop.dbus.annotations.DBusInterfaceName;
 import org.freedesktop.dbus.interfaces.DBusInterface;
 import org.freedesktop.dbus.messages.DBusSignal;
 import org.freedesktop.dbus.exceptions.DBusException;
+import org.freedesktop.dbus.types.UInt32;
 import org.freedesktop.dbus.types.Variant;
 
 import java.util.List;
@@ -32,6 +33,9 @@ public interface StatusNotifierItemInterface extends DBusInterface {
 
     /** Called by the tray host when the user middle-clicks the icon. */
     void SecondaryActivate(int x, int y);
+
+    /** Ayatana extension — secondary activation with timestamp. */
+    void XAyatanaSecondaryActivate(UInt32 timestamp);
 
     /** Called by the tray host when the user scrolls over the icon. */
     void Scroll(int delta, String orientation);
@@ -62,6 +66,18 @@ public interface StatusNotifierItemInterface extends DBusInterface {
         public NewStatus(final String path, final String status) throws DBusException {
             super(path, status);
             this.status = status;
+        }
+    }
+
+    class XAyatanaNewLabel extends DBusSignal {
+        public final String label;
+        public final String guide;
+        public XAyatanaNewLabel(final String path,
+                                final String label,
+                                final String guide) throws DBusException {
+            super(path, label, guide);
+            this.label = label;
+            this.guide = guide;
         }
     }
 }

@@ -101,6 +101,7 @@ public final class StatusNotifierItemExport
         if (onContextMenu != null) { onContextMenu.accept(null); }
     }
     @Override public void SecondaryActivate(final int x, final int y) {}
+    @Override public void XAyatanaSecondaryActivate(final UInt32 timestamp) {}
     @Override public void Scroll(final int delta, final String orientation) {}
 
 
@@ -138,8 +139,16 @@ public final class StatusNotifierItemExport
         props.put("AttentionIconPixmap", new Variant<>(Collections.emptyList(), "a(iiay)"));
         props.put("AttentionMovieName",  new Variant<>(""));
         props.put("ItemIsMenu",  new Variant<>(Boolean.TRUE));
-        props.put("Menu",        new Variant<>(MENU_PATH));
+        props.put("Menu",        new Variant<>(MENU_PATH, "o"));
         props.put("ToolTip",     new Variant<>(toolTip));
+        // Ayatana/Ubuntu AppIndicator extensions
+        props.put("XAyatanaLabel",          new Variant<>(""));
+        props.put("XAyatanaLabelGuide",     new Variant<>(""));
+        props.put("XAyatanaOrderingIndex",  new Variant<>(new UInt32(0)));
+        props.put("IconThemePath",          new Variant<>(""));
+        props.put("IconAccessibleDesc",     new Variant<>(""));
+        props.put("AttentionIconName",      new Variant<>(""));
+        props.put("AttentionAccessibleDesc", new Variant<>(""));
         return props;
     }
 
