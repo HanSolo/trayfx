@@ -63,8 +63,8 @@ public final class IconSpec {
      */
     public static final IconSpec WINDOWS = new IconSpec("Windows notification area", 16, 16, 24, 24, ScalePolicy.FIT_KEEP_ASPECT);
 
-    /** Linux panel (GNOME / KDE): 22×22 px. */
-    public static final IconSpec LINUX = new IconSpec("Linux panel (appindicator)", 22, 22, 22, 22, ScalePolicy.FIT_KEEP_ASPECT);
+    /** Linux panel (GNOME / KDE): supply 48×48 and let AWT scale down with setImageAutoSize(true). */
+    public static final IconSpec LINUX = new IconSpec("Linux panel (appindicator)", 22, 22, 48, 48, ScalePolicy.FIT_KEEP_ASPECT);
 
     /** Fallback for unsupported platforms — no constraints. */
     public static final IconSpec NONE = new IconSpec("No constraint", Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, ScalePolicy.NONE);
