@@ -9,6 +9,7 @@ import org.freedesktop.dbus.annotations.DBusInterfaceName;
 import org.freedesktop.dbus.connections.impl.DBusConnection;
 import org.freedesktop.dbus.exceptions.DBusException;
 import org.freedesktop.dbus.interfaces.Properties;
+import org.freedesktop.dbus.messages.DBusSignal;
 import org.freedesktop.dbus.types.UInt32;
 import org.freedesktop.dbus.types.Variant;
 
@@ -68,22 +69,25 @@ public final class StatusNotifierItemExport
     // ── Icon ──────────────────────────────────────────────────────────────
 
     void setIcon(final Image fxImage) {
-        this.icon       = fxImage;
+        this.icon        = fxImage;
         this.iconPixmaps = fxImage != null ? toArgb32Pixmaps(fxImage)
                                            : Collections.emptyList();
-        emitSignal(new StatusNotifierItemInterface.NewIcon(OBJECT_PATH));
+        try { emitSignal(new StatusNotifierItemInterface.NewIcon(OBJECT_PATH)); }
+        catch (final Exception ignored) {}
     }
 
     // ── Title / tooltip ───────────────────────────────────────────────────
 
     void setTitle(final String title) {
         this.title = title != null ? title : "";
-        emitSignal(new StatusNotifierItemInterface.NewTitle(OBJECT_PATH));
+        try { emitSignal(new StatusNotifierItemInterface.NewTitle(OBJECT_PATH)); }
+        catch (final Exception ignored) {}
     }
 
     void setToolTip(final String tip) {
         this.toolTip = tip != null ? tip : "";
-        emitSignal(new StatusNotifierItemInterface.NewToolTip(OBJECT_PATH));
+        try { emitSignal(new StatusNotifierItemInterface.NewToolTip(OBJECT_PATH)); }
+        catch (final Exception ignored) {}
     }
 
     // ── Menu ──────────────────────────────────────────────────────────────

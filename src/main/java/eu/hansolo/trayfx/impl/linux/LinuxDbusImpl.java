@@ -8,8 +8,6 @@ import javafx.scene.paint.Color;
 import org.freedesktop.dbus.connections.impl.DBusConnection;
 import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder;
 
-import java.lang.management.ManagementFactory;
-
 
 /**
  * D-Bus StatusNotifierItem backend for Linux.
@@ -125,11 +123,7 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
     }
 
     private static String getPid() {
-        try {
-            return String.valueOf(ProcessHandle.current().pid());
-        } catch (final Exception e) {
-            return ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
-        }
+        return String.valueOf(ProcessHandle.current().pid());
     }
 
     private static void offThread(final Runnable task) {
