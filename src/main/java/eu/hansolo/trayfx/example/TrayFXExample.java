@@ -166,35 +166,37 @@ public class TrayFXExample extends Application {
         final double cx = size / 2.0, cy = size / 2.0, r = size / 2.0 - 1;
 
         gc.clearRect(0, 0, size, size);
+
+        // On Linux, Canvas.snapshot() transparency is broken — white background
+        // bleeds through regardless of SnapshotParameters. Use a solid colored
+        // circle background so the icon looks correct on any tray color.
+        final boolean isLinux = eu.hansolo.trayfx.Platform.current() == eu.hansolo.trayfx.Platform.LINUX;
+        if (isLinux) {
+            gc.setFill(accent.darker());
+            gc.fillOval(0, 0, size, size);
+        } else {
         gc.setFill(Color.WHITE.deriveColor(0, 1, 1, 0.85));
         gc.fillOval(1, 1, size - 2, size - 2);
         gc.setStroke(accent);
         gc.setLineWidth(Math.max(1, size / 16.0));
         gc.strokeOval(1, 1, size - 2, size - 2);
+        }
 
         final double hourAngle  = Math.toRadians((time.getHour() % 12) * 30.0 + time.getMinute() * 0.5 - 90);
-        gc.setStroke(Color.DARKSLATEGRAY);
+        gc.setStroke(isLinux ? Color.WHITE : Color.DARKSLATEGRAY);
         gc.setLineWidth(Math.max(1.5, size / 11.0));
         gc.strokeLine(cx, cy, cx + Math.cos(hourAngle) * r * 0.5, cy + Math.sin(hourAngle) * r * 0.5);
 
         final double minAngle = Math.toRadians(time.getMinute() * 6.0 - 90);
-        gc.setStroke(accent);
+        gc.setStroke(isLinux ? Color.WHITE : accent);
         gc.setLineWidth(Math.max(1, size / 14.0));
         gc.strokeLine(cx, cy, cx + Math.cos(minAngle) * r * 0.72, cy + Math.sin(minAngle) * r * 0.72);
 
         final double dotR = Math.max(1.5, size / 10.0);
-        gc.setFill(accent);
+        gc.setFill(isLinux ? Color.WHITE : accent);
         gc.fillOval(cx - dotR, cy - dotR, dotR * 2, dotR * 2);
 
-        // Pre-fill the target WritableImage with transparent pixels before snapshot.
-        // On Linux, Canvas.snapshot() with SnapshotParameters(TRANSPARENT) has a bug
-        // where it composites against white. Pre-filling with zeros ensures pixels
-        // outside the drawn content remain fully transparent.
         final WritableImage snapshot = new WritableImage(size, size);
-        final int[] transparent = new int[size * size]; // all zeros = transparent
-        snapshot.getPixelWriter().setPixels(0, 0, size, size,
-            javafx.scene.image.PixelFormat.getIntArgbInstance(), transparent, 0, size);
-
         final SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
         canvas.snapshot(params, snapshot);
