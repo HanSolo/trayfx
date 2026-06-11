@@ -16,29 +16,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
- * D-Bus export for the {@code com.canonical.dbusmenu} interface.
+ * Implementation of {@code com.canonical.dbusmenu} exported over D-Bus.
  *
- * <p>The menu is represented as a tree of items. Each item has an integer ID.
- * The root item always has ID 0. When the menu changes, we increment the
- * revision counter and emit {@link DbusMenuInterface.LayoutUpdated} so the
- * tray host re-fetches the layout.
- *
- * <h2>Item format</h2>
- * Each menu item in the layout is a struct {@code (id, props, children)} where:
- * <ul>
- *   <li>{@code id} — integer ID</li>
- *   <li>{@code props} — map of string→variant properties</li>
- *   <li>{@code children} — list of child items (recursive)</li>
- * </ul>
+ * The menu layout is represented as a tree rooted at ID 0. When the menu
+ * changes the revision counter increments and {@link DbusMenuInterface.LayoutUpdated}
+ * is emitted so the tray host re-fetches the layout.
  */
 public final class DbusMenuExport implements DbusMenuInterface {
 
     private final DBusConnection  connection;
-    private final AtomicInteger   revision  = new AtomicInteger(1);
-    private final AtomicInteger   nextId    = new AtomicInteger(1);
+    private final AtomicInteger   revision = new AtomicInteger(1);
 
     private volatile TrayMenu     menu;
-    private volatile List<int[]>  itemIds   = Collections.emptyList(); // [id, menuIndex]
+    // Maps D-Bus item ID → index in menu.getItems()
+    private volatile int[]        idToIndex = new int[0];
 
 
     DbusMenuExport(final DBusConnection connection) {
@@ -58,28 +49,34 @@ public final class DbusMenuExport implements DbusMenuInterface {
     // ── GetLayout ─────────────────────────────────────────────────────────
 
     @Override
-    public Map<String, Object> GetLayout(final int    parentId,
-                                         final int    recursionDepth,
-                                         final List<String> propertyNames) {
-        final Map<String, Object> result = new HashMap<>();
-        result.put("revision", new UInt32(revision.get()));
-        result.put("layout",   buildLayout());
+    public Map<String, Variant<?>> GetLayout(final int          parentId,
+                                              final int          recursionDepth,
+                                              final List<String> propertyNames) {
+        final Map<String, Variant<?>> result = new HashMap<>();
+        result.put("revision", new Variant<>(new UInt32(revision.get())));
+        result.put("layout",   new Variant<>(buildLayoutVariant(), "v"));
         return result;
     }
 
-    private Object[] buildLayout() {
+    /**
+     * Builds the menu layout as a Variant-wrapped struct to avoid
+     * dbus-java's Object introspection restriction.
+     * Format: list of [id, props-map, children-list] per item.
+     */
+    private Variant<?> buildLayoutVariant() {
         final TrayMenu m = menu;
+        final List<Map<String, Variant<?>>> items = new ArrayList<>();
 
-        // Root item — invisible, just a container
+        // Root container item
         final Map<String, Variant<?>> rootProps = new HashMap<>();
         rootProps.put("children-display", new Variant<>("submenu"));
-
-        final List<Object[]> children = new ArrayList<>();
-        final List<int[]>    ids      = new ArrayList<>();
+        items.add(rootProps);
 
         if (m != null) {
-            int id = 1;
-            for (final MenuItem item : m.getItems()) {
+            final List<MenuItem> menuItems = m.getItems();
+            final int[]          ids       = new int[menuItems.size()];
+            for (int i = 0; i < menuItems.size(); i++) {
+                final MenuItem item = menuItems.get(i);
                 final Map<String, Variant<?>> props = new HashMap<>();
                 if (item.isSeparator()) {
                     props.put("type",    new Variant<>("separator"));
@@ -89,64 +86,48 @@ public final class DbusMenuExport implements DbusMenuInterface {
                     props.put("enabled", new Variant<>(item.isEnabled()));
                     props.put("visible", new Variant<>(Boolean.TRUE));
                 }
-                children.add(new Object[]{ id, props, Collections.emptyList() });
-                ids.add(new int[]{ id, m.getItems().indexOf(item) });
-                id++;
+                items.add(props);
+                ids[i] = i + 1; // item IDs start at 1
             }
+            idToIndex = ids;
         }
 
-        itemIds = ids;
-        return new Object[]{ 0, rootProps, children };
+        return new Variant<>(items, "aa{sv}");
     }
 
 
     // ── GetGroupProperties ────────────────────────────────────────────────
 
     @Override
-    public Map<String, Variant<?>> GetGroupProperties(final List<Integer>    ids,
-                                                       final List<String>     propertyNames) {
+    public Map<String, Variant<?>> GetGroupProperties(final List<Integer> ids,
+                                                       final List<String>  propertyNames) {
         return Collections.emptyMap();
     }
 
 
-    // ── Event (item clicked) ──────────────────────────────────────────────
+    // ── Event ─────────────────────────────────────────────────────────────
 
     @Override
-    public void Event(final int       id,
-                      final String    eventId,
+    public void Event(final int        id,
+                      final String     eventId,
                       final Variant<?> data,
-                      final UInt32    timestamp) {
+                      final UInt32     timestamp) {
         if (!"clicked".equals(eventId)) { return; }
         final TrayMenu m = menu;
         if (m == null) { return; }
 
-        // Find the menu item for this id
-        for (final int[] entry : itemIds) {
-            if (entry[0] == id) {
-                final int idx = entry[1];
-                if (idx >= 0 && idx < m.getItems().size()) {
-                    final MenuItem item = m.getItems().get(idx);
-                    if (!item.isSeparator() && item.isEnabled()) {
-                        Platform.runLater(item::fire);
-                    }
-                }
-                break;
+        final int idx = id - 1; // IDs start at 1, indices at 0
+        final List<MenuItem> items = m.getItems();
+        if (idx >= 0 && idx < items.size()) {
+            final MenuItem item = items.get(idx);
+            if (!item.isSeparator() && item.isEnabled()) {
+                Platform.runLater(item::fire);
             }
         }
     }
 
     @Override
-    public List<Integer> EventGroup(final List<Object[]> events) {
-        return Collections.emptyList();
-    }
-
-    @Override
     public boolean AboutToShow(final int id) { return false; }
-
-    @Override
-    public Map<String, List<Integer>> AboutToShowGroup(final List<Integer> ids) {
-        return Collections.emptyMap();
-    }
 
 
     // ── Signal ────────────────────────────────────────────────────────────
@@ -156,8 +137,6 @@ public final class DbusMenuExport implements DbusMenuInterface {
             connection.sendMessage(new DbusMenuInterface.LayoutUpdated(
                 StatusNotifierItemExport.MENU_PATH,
                 new UInt32(revision.get()), 0));
-        } catch (final Exception e) {
-            // non-fatal
-        }
+        } catch (final Exception ignored) {}
     }
 }

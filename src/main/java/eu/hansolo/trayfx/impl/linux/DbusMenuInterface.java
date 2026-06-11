@@ -12,55 +12,36 @@ import java.util.Map;
 
 
 /**
- * D-Bus interface definition for {@code com.canonical.dbusmenu}.
+ * D-Bus interface for {@code com.canonical.dbusmenu}.
  *
- * <p>DBusMenu is the protocol used to pass menus from the application to the
- * tray host over D-Bus, so the host can render them natively. The menu is
- * represented as a tree of items with integer IDs.
+ * Only the methods actually used by GNOME/KDE tray hosts are declared here.
+ * All method signatures use concrete D-Bus-compatible types — no raw
+ * {@code Object} or {@code Object[]} which dbus-java cannot introspect.
  */
 @DBusInterfaceName("com.canonical.dbusmenu")
 public interface DbusMenuInterface extends DBusInterface {
 
     /**
-     * Returns the layout of the menu starting from the given parent item.
-     *
-     * @param parentId  the ID of the parent item (0 = root)
-     * @param recursionDepth  how many levels deep to return (-1 = all)
-     * @param propertyNames  which properties to return (empty = all)
-     * @return a tuple of (revision, layout-item)
+     * Returns the layout starting from parentId.
+     * Result is a struct: (revision, layout-item) but we return as Variant
+     * to avoid dbus-java introspection issues with nested structs.
      */
-    Map<String, Object> GetLayout(int parentId, int recursionDepth, List<String> propertyNames);
+    Map<String, Variant<?>> GetLayout(int parentId, int recursionDepth,
+                                      List<String> propertyNames);
 
-    /**
-     * Returns the properties of a single menu item.
-     */
-    Map<String, Variant<?>> GetGroupProperties(List<Integer> ids, List<String> propertyNames);
+    /** Returns properties for a list of item IDs. */
+    Map<String, Variant<?>> GetGroupProperties(List<Integer> ids,
+                                               List<String>  propertyNames);
 
-    /**
-     * Notify the host that a menu item was activated by the application
-     * (not by user interaction through the host).
-     */
+    /** Notifies that a menu item event occurred (e.g. clicked). */
     void Event(int id, String eventId, Variant<?> data, UInt32 timestamp);
 
-    /**
-     * Notify the host that multiple events occurred.
-     */
-    List<Integer> EventGroup(List<Object[]> events);
-
-    /**
-     * Ask the item to perform the action associated with the menu item.
-     */
+    /** Returns whether item is about to be shown. */
     boolean AboutToShow(int id);
-
-    /**
-     * Notify about multiple items being about to show.
-     */
-    Map<String, List<Integer>> AboutToShowGroup(List<Integer> ids);
 
 
     // ── Signals ───────────────────────────────────────────────────────────
 
-    /** Fired when the layout changes — host should re-fetch with GetLayout. */
     class LayoutUpdated extends DBusSignal {
         public final UInt32 revision;
         public final int    parent;
@@ -71,15 +52,6 @@ public interface DbusMenuInterface extends DBusInterface {
             super(path, revision, parent);
             this.revision = revision;
             this.parent   = parent;
-        }
-    }
-
-    /** Fired when one or more item properties change. */
-    class ItemsPropertiesUpdated extends DBusSignal {
-        public ItemsPropertiesUpdated(final String path,
-                                      final List<Object[]> updatedProps,
-                                      final List<Object[]> removedProps) throws DBusException {
-            super(path, updatedProps, removedProps);
         }
     }
 }
