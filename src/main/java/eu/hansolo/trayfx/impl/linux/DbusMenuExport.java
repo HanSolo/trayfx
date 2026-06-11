@@ -16,20 +16,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
- * Implementation of {@code com.canonical.dbusmenu} exported over D-Bus.
+ * Implementation of {@code com.canonical.dbusmenu}.
  *
- * The menu layout is represented as a tree rooted at ID 0. When the menu
- * changes the revision counter increments and {@link DbusMenuInterface.LayoutUpdated}
- * is emitted so the tray host re-fetches the layout.
+ * The layout format expected by AppIndicator/GNOME Shell is:
+ * {@code (revision, (id, props, children))} where each item is
+ * {@code (int id, Map<String,Variant> props, List<Variant> children)}.
+ *
+ * We return this as a {@code Map<String, Variant>} with keys
+ * "revision" and "layout" to avoid dbus-java struct serialisation issues.
  */
 public final class DbusMenuExport implements DbusMenuInterface {
 
     private final DBusConnection  connection;
     private final AtomicInteger   revision = new AtomicInteger(1);
-
     private volatile TrayMenu     menu;
-    // Maps D-Bus item ID → index in menu.getItems()
-    private volatile int[]        idToIndex = new int[0];
 
 
     DbusMenuExport(final DBusConnection connection) {
@@ -54,29 +54,16 @@ public final class DbusMenuExport implements DbusMenuInterface {
                                               final List<String> propertyNames) {
         final Map<String, Variant<?>> result = new HashMap<>();
         result.put("revision", new Variant<>(new UInt32(revision.get())));
-        result.put("layout",   new Variant<>(buildLayoutVariant(), "v"));
-        return result;
-    }
 
-    /**
-     * Builds the menu layout as a Variant-wrapped struct to avoid
-     * dbus-java's Object introspection restriction.
-     * Format: list of [id, props-map, children-list] per item.
-     */
-    private Variant<?> buildLayoutVariant() {
-        final TrayMenu m = menu;
-        final List<Map<String, Variant<?>>> items = new ArrayList<>();
-
-        // Root container item
+        // Root item: id=0, props with children-display=submenu, children=menu items
         final Map<String, Variant<?>> rootProps = new HashMap<>();
         rootProps.put("children-display", new Variant<>("submenu"));
-        items.add(rootProps);
 
+        final List<Variant<?>> children = new ArrayList<>();
+        final TrayMenu m = menu;
         if (m != null) {
-            final List<MenuItem> menuItems = m.getItems();
-            final int[]          ids       = new int[menuItems.size()];
-            for (int i = 0; i < menuItems.size(); i++) {
-                final MenuItem item = menuItems.get(i);
+            int id = 1;
+            for (final MenuItem item : m.getItems()) {
                 final Map<String, Variant<?>> props = new HashMap<>();
                 if (item.isSeparator()) {
                     props.put("type",    new Variant<>("separator"));
@@ -86,13 +73,25 @@ public final class DbusMenuExport implements DbusMenuInterface {
                     props.put("enabled", new Variant<>(item.isEnabled()));
                     props.put("visible", new Variant<>(Boolean.TRUE));
                 }
-                items.add(props);
-                ids[i] = i + 1; // item IDs start at 1
+                // Each child is a struct (int, Map<String,Variant>, List<Variant>)
+                // wrapped as a Variant so it can go in the children list
+                final List<Object> itemStruct = new ArrayList<>();
+                itemStruct.add(id);
+                itemStruct.add(props);
+                itemStruct.add(Collections.emptyList());
+                children.add(new Variant<>(itemStruct, "(ia{sv}av)"));
+                id++;
             }
-            idToIndex = ids;
         }
 
-        return new Variant<>(items, "aa{sv}");
+        // Root layout struct: (0, rootProps, children)
+        final List<Object> rootStruct = new ArrayList<>();
+        rootStruct.add(0);
+        rootStruct.add(rootProps);
+        rootStruct.add(children);
+        result.put("layout", new Variant<>(rootStruct, "(ia{sv}av)"));
+
+        return result;
     }
 
 
@@ -105,7 +104,7 @@ public final class DbusMenuExport implements DbusMenuInterface {
     }
 
 
-    // ── Event ─────────────────────────────────────────────────────────────
+    // ── Event (item clicked) ──────────────────────────────────────────────
 
     @Override
     public void Event(final int        id,
@@ -116,7 +115,7 @@ public final class DbusMenuExport implements DbusMenuInterface {
         final TrayMenu m = menu;
         if (m == null) { return; }
 
-        final int idx = id - 1; // IDs start at 1, indices at 0
+        final int idx = id - 1;
         final List<MenuItem> items = m.getItems();
         if (idx >= 0 && idx < items.size()) {
             final MenuItem item = items.get(idx);

@@ -137,7 +137,7 @@ public final class StatusNotifierItemExport
         props.put("AttentionIconName",   new Variant<>(""));
         props.put("AttentionIconPixmap", new Variant<>(Collections.emptyList(), "a(iiay)"));
         props.put("AttentionMovieName",  new Variant<>(""));
-        props.put("ItemIsMenu",  new Variant<>(Boolean.FALSE));
+        props.put("ItemIsMenu",  new Variant<>(Boolean.TRUE));
         props.put("Menu",        new Variant<>(MENU_PATH));
         props.put("ToolTip",     new Variant<>(toolTip));
         return props;
