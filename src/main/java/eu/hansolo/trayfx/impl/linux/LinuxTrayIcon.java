@@ -24,21 +24,21 @@ import java.awt.image.BufferedImage;
  * Linux implementation of {@link eu.hansolo.trayfx.TrayIcon}.
  *
  * <h2>Icon scaling</h2>
- * AWT's {@code setImageAutoSize} crops rather than scales on Linux/GTK.
- * We pre-scale to the exact size reported by {@code SystemTray.getTrayIconSize()}
- * using bicubic interpolation and set {@code setImageAutoSize(false)}.
- * The tray size is queried once after the icon is added and cached.
+ * The source image (from {@code IconSpec.LINUX}, 22×22) is scaled to the
+ * exact pixel size reported by {@code SystemTray.getTrayIconSize()} using
+ * bicubic interpolation. {@code setImageAutoSize(false)} ensures AWT uses
+ * our pre-scaled image without any further cropping or scaling.
  *
  * <h2>Menu</h2>
- * AWT {@code PopupMenu} on Linux/GTK becomes stale after the first display.
- * We rebuild it fresh on every right-click (detected via {@code BUTTON3}) and
- * show it via a minimal hidden {@code Frame} — the most reliable approach
- * across GNOME, KDE and XFCE without triggering recursive mouse events.
+ * {@code mouseClicked} is unreliable on Linux system tray icons — we use
+ * {@code mousePressed} with explicit {@code BUTTON1} / {@code BUTTON3}
+ * checks instead. The menu is rebuilt fresh on every right-click to avoid
+ * the AWT/GTK stale-handle bug.
  */
 public final class LinuxTrayIcon extends AbstractTrayIcon {
 
     private volatile java.awt.TrayIcon awtTrayIcon;
-    private volatile int               trayIconSize = 22; // updated after add()
+    private          int               traySize = 22; // updated in nativeInstall
 
 
     @Override protected void nativeInstall() {
@@ -49,18 +49,19 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         }
         offThread(() -> {
             try {
-                // Query tray size before creating the icon
+                // Query tray size before creating the icon so toBufferedImage
+                // scales correctly from the very first call
                 final Dimension d = SystemTray.getSystemTray().getTrayIconSize();
-                if (d != null && d.width > 0) { trayIconSize = d.width; }
+                if (d != null && d.width > 0) { traySize = d.width; }
 
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
-                awtTrayIcon.setImageAutoSize(false); // we pre-scale to exact tray size
+                awtTrayIcon.setImageAutoSize(false); // we pre-scale — no AWT cropping
 
                 if (getText() != null) { awtTrayIcon.setToolTip(getText()); }
 
                 awtTrayIcon.addMouseListener(new MouseAdapter() {
                     @Override
-                    public void mouseClicked(final MouseEvent e) {
+                    public void mousePressed(final MouseEvent e) {
                         if (e.getButton() == MouseEvent.BUTTON1) {
                             fireLeftClick();
                         } else if (e.getButton() == MouseEvent.BUTTON3) {
@@ -111,10 +112,9 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         // Build a fresh PopupMenu — GTK corrupts reused native menu handles
         final PopupMenu popup = buildPopupMenu(menu);
 
-        // Show via a minimal hidden Frame positioned at the click location.
-        // This is the most reliable approach on Linux — avoids the recursive
-        // mouse event loop that Robot injection causes, and works across
-        // GNOME, KDE, and XFCE.
+        // Show via a minimal hidden Frame at the click position.
+        // This is the most reliable cross-DE approach on Linux without
+        // triggering recursive mouse events (Robot causes an infinite loop).
         final Frame frame = new Frame();
         frame.setUndecorated(true);
         frame.setSize(1, 1);
@@ -148,8 +148,9 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
     // ── Image conversion ─────────────────────────────────────────────────
 
     private BufferedImage toBufferedImage(final Image fxImage) {
+        final int size = traySize;
         if (fxImage == null) {
-            return new BufferedImage(trayIconSize, trayIconSize, BufferedImage.TYPE_INT_ARGB);
+            return new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         }
 
         final int srcW = (int) fxImage.getWidth();
@@ -157,7 +158,6 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         final BufferedImage src = new BufferedImage(srcW, srcH, BufferedImage.TYPE_INT_ARGB);
         SwingFXUtils.fromFXImage(fxImage, src);
 
-        final int size = trayIconSize;
         if (srcW == size && srcH == size) { return src; }
 
         // Scale to exact tray size using bicubic interpolation
