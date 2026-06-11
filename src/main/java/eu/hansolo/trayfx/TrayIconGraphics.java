@@ -234,9 +234,17 @@ public final class TrayIconGraphics {
             gc.fillText(text, inset + shapeW / 2.0, inset + shapeH / 2.0);
         }
 
+        // Pre-fill the target WritableImage with transparent pixels before snapshot.
+        // On Linux, Canvas.snapshot() with SnapshotParameters(TRANSPARENT) has a bug
+        // where it composites against white. Pre-filling with zeros ensures pixels
+        // outside the drawn content remain fully transparent.
+        final WritableImage snapshot = new WritableImage(size, size);
+        final int[] transparent = new int[size * size];
+        snapshot.getPixelWriter().setPixels(0, 0, size, size,
+            javafx.scene.image.PixelFormat.getIntArgbInstance(), transparent, 0, size);
+
         final SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
-        final WritableImage snapshot = new WritableImage(size, size);
         canvas.snapshot(params, snapshot);
         return snapshot;
     }
