@@ -57,6 +57,7 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
                 // this is the pixel size AWT will render into
                 final Dimension d = SystemTray.getSystemTray().getTrayIconSize();
                 if (d != null && d.width > 0) { traySize = d.width; }
+                System.out.println("[TrayFX] nativeInstall: getTrayIconSize=" + d + " traySize=" + traySize);
 
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
                 // setImageAutoSize(false) — we pre-scale to exact tray size.
@@ -72,7 +73,7 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
                             fireLeftClick();
                         } else if (e.getButton() == MouseEvent.BUTTON3) {
                             showFreshMenu(e);
-                    }
+                        }
                     }
                 });
 
@@ -164,19 +165,19 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
     private BufferedImage toBufferedImage(final Image fxImage) {
         final int size = traySize;
         if (fxImage == null) {
+            System.out.println("[TrayFX] toBufferedImage: fxImage=null, traySize=" + size);
             return new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         }
 
-        // Convert JavaFX image to BufferedImage at source size
         final int srcW = (int) fxImage.getWidth();
         final int srcH = (int) fxImage.getHeight();
+        System.out.println("[TrayFX] toBufferedImage: src=" + srcW + "x" + srcH + " traySize=" + size);
+
         final BufferedImage src = new BufferedImage(srcW, srcH, BufferedImage.TYPE_INT_ARGB);
         SwingFXUtils.fromFXImage(fxImage, src);
 
-        // Already correct size — return as-is
         if (srcW == size && srcH == size) { return src; }
 
-        // Scale to exact tray size using bicubic interpolation
         final BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         final Graphics2D g = scaled.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -184,6 +185,7 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
         g.drawImage(src, 0, 0, size, size, null);
         g.dispose();
+        System.out.println("[TrayFX] toBufferedImage: scaled to " + size + "x" + size);
         return scaled;
     }
 
