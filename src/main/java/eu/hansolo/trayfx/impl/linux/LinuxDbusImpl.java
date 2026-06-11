@@ -1,7 +1,6 @@
 package eu.hansolo.trayfx.impl.linux;
 
 import eu.hansolo.trayfx.AbstractTrayIcon;
-import eu.hansolo.trayfx.AbstractTrayIcon;
 import eu.hansolo.trayfx.menu.TrayMenu;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
@@ -61,7 +60,8 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
                 }
                 if (getMenu() != null) { sniExport.setMenu(getMenu()); }
 
-                registerWithWatcher(busName);
+                // Register with object path format expected by Ayatana/Ubuntu AppIndicator
+                registerWithWatcher(StatusNotifierItemExport.OBJECT_PATH);
 
                 // Signal both this impl and the parent that we're ready
                 onNativeReady();

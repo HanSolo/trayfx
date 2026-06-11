@@ -35,8 +35,8 @@ import java.util.function.Consumer;
 public final class StatusNotifierItemExport
     implements StatusNotifierItemInterface, Properties {
 
-    static final String OBJECT_PATH = "/StatusNotifierItem";
-    static final String MENU_PATH   = "/StatusNotifierItem/Menu";
+    static final String OBJECT_PATH = "/org/ayatana/NotificationItem/trayfx";
+    static final String MENU_PATH   = "/org/ayatana/NotificationItem/trayfx/Menu";
     static final String SNI_IFACE   = "org.kde.StatusNotifierItem";
 
     private final DBusConnection      connection;
