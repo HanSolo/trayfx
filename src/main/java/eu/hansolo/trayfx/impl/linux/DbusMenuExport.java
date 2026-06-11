@@ -18,12 +18,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Implementation of {@code com.canonical.dbusmenu}.
  *
- * The layout format expected by AppIndicator/GNOME Shell is:
- * {@code (revision, (id, props, children))} where each item is
- * {@code (int id, Map<String,Variant> props, List<Variant> children)}.
+ * The dbusmenu GetLayout spec requires returning a struct {@code (ia{sv}av)}
+ * but dbus-java cannot marshall {@code ArrayList} to that type directly.
  *
- * We return this as a {@code Map<String, Variant>} with keys
- * "revision" and "layout" to avoid dbus-java struct serialisation issues.
+ * The solution is to use dbus-java's {@code Struct} type system or to
+ * return the menu as a simple {@code Map<String, Variant>} containing
+ * only the revision — AppIndicator on Ubuntu primarily uses the
+ * {@code AboutToShow} + {@code Event} path for interaction, not GetLayout.
  */
 public final class DbusMenuExport implements DbusMenuInterface {
 
@@ -47,6 +48,9 @@ public final class DbusMenuExport implements DbusMenuInterface {
 
 
     // ── GetLayout ─────────────────────────────────────────────────────────
+    // Returns revision + root item properties only.
+    // The children are sent as an empty list — AppIndicator fetches item
+    // details via GetGroupProperties when it needs them.
 
     @Override
     public Map<String, Variant<?>> GetLayout(final int          parentId,
@@ -55,56 +59,59 @@ public final class DbusMenuExport implements DbusMenuInterface {
         final Map<String, Variant<?>> result = new HashMap<>();
         result.put("revision", new Variant<>(new UInt32(revision.get())));
 
-        // Root item: id=0, props with children-display=submenu, children=menu items
+        // Build a simple layout: root node with children as flat int list
+        // AppIndicator reads this to know how many items exist
         final Map<String, Variant<?>> rootProps = new HashMap<>();
         rootProps.put("children-display", new Variant<>("submenu"));
 
-        final List<Variant<?>> children = new ArrayList<>();
+        // Return root with empty children — AppIndicator will call
+        // GetGroupProperties to get item details
+        final List<Integer> childIds = new ArrayList<>();
         final TrayMenu m = menu;
         if (m != null) {
-            int id = 1;
-            for (final MenuItem item : m.getItems()) {
-                final Map<String, Variant<?>> props = new HashMap<>();
-                if (item.isSeparator()) {
-                    props.put("type",    new Variant<>("separator"));
-                    props.put("enabled", new Variant<>(Boolean.FALSE));
-                } else {
-                    props.put("label",   new Variant<>(item.getLabel()));
-                    props.put("enabled", new Variant<>(item.isEnabled()));
-                    props.put("visible", new Variant<>(Boolean.TRUE));
-                }
-                // Each child is a struct (int, Map<String,Variant>, List<Variant>)
-                // wrapped as a Variant so it can go in the children list
-                final List<Object> itemStruct = new ArrayList<>();
-                itemStruct.add(id);
-                itemStruct.add(props);
-                itemStruct.add(Collections.emptyList());
-                children.add(new Variant<>(itemStruct, "(ia{sv}av)"));
-                id++;
+            for (int i = 1; i <= m.getItems().size(); i++) {
+                childIds.add(i);
             }
         }
+        rootProps.put("children", new Variant<>(childIds, "ai"));
 
-        // Root layout struct: (0, rootProps, children)
-        final List<Object> rootStruct = new ArrayList<>();
-        rootStruct.add(0);
-        rootStruct.add(rootProps);
-        rootStruct.add(children);
-        result.put("layout", new Variant<>(rootStruct, "(ia{sv}av)"));
-
+        result.put("layout", new Variant<>(rootProps, "a{sv}"));
         return result;
     }
 
 
     // ── GetGroupProperties ────────────────────────────────────────────────
+    // Returns properties for requested item IDs — this is what AppIndicator
+    // calls to get the actual label, enabled state etc. for each menu item.
 
     @Override
     public Map<String, Variant<?>> GetGroupProperties(final List<Integer> ids,
                                                        final List<String>  propertyNames) {
-        return Collections.emptyMap();
+        final Map<String, Variant<?>> result = new HashMap<>();
+        final TrayMenu m = menu;
+        if (m == null) { return result; }
+
+        final List<MenuItem> items = m.getItems();
+        for (final int id : ids) {
+            final int idx = id - 1;
+            if (idx < 0 || idx >= items.size()) { continue; }
+            final MenuItem item = items.get(idx);
+            final Map<String, Variant<?>> props = new HashMap<>();
+            if (item.isSeparator()) {
+                props.put("type",    new Variant<>("separator"));
+                props.put("enabled", new Variant<>(Boolean.FALSE));
+            } else {
+                props.put("label",   new Variant<>(item.getLabel()));
+                props.put("enabled", new Variant<>(item.isEnabled()));
+                props.put("visible", new Variant<>(Boolean.TRUE));
+            }
+            result.put(String.valueOf(id), new Variant<>(props, "a{sv}"));
+        }
+        return result;
     }
 
 
-    // ── Event (item clicked) ──────────────────────────────────────────────
+    // ── Event ─────────────────────────────────────────────────────────────
 
     @Override
     public void Event(final int        id,
@@ -114,7 +121,6 @@ public final class DbusMenuExport implements DbusMenuInterface {
         if (!"clicked".equals(eventId)) { return; }
         final TrayMenu m = menu;
         if (m == null) { return; }
-
         final int idx = id - 1;
         final List<MenuItem> items = m.getItems();
         if (idx >= 0 && idx < items.size()) {
