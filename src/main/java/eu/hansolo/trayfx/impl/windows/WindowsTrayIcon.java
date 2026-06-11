@@ -97,13 +97,17 @@ public final class WindowsTrayIcon extends AbstractTrayIcon {
         final int w = (int) fxImage.getWidth();
         final int h = (int) fxImage.getHeight();
         final BufferedImage argb = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        // Clear to transparent before conversion — on some JDK/platform configurations
+        // SwingFXUtils.fromFXImage composites against white if pixels are uninitialised.
+        final java.awt.Graphics2D clear = argb.createGraphics();
+        clear.setComposite(java.awt.AlphaComposite.Clear);
+        clear.fillRect(0, 0, w, h);
+        clear.dispose();
         SwingFXUtils.fromFXImage(fxImage, argb);
         return argb;
     }
 
     private static void offThread(final Runnable task) {
-        final Thread t = new Thread(task, "trayfx-awt");
-        t.setDaemon(true);
-        t.start();
+        Thread.ofVirtual().name("trayfx-awt").start(task);
     }
 }

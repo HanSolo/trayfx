@@ -61,7 +61,6 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
                 // Using 2/3 of the reported size matches what GTK actually renders.
                 final Dimension d = SystemTray.getSystemTray().getTrayIconSize();
                 if (d != null && d.width > 0) { traySize = Math.max(16, (d.width * 2) / 3); }
-                System.out.println("[TrayFX] nativeInstall: getTrayIconSize=" + d + " traySize=" + traySize);
 
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
                 // Do not call setImageAutoSize at all — leave it at its default (false).
@@ -169,33 +168,38 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
     private BufferedImage toBufferedImage(final Image fxImage) {
         final int size = traySize;
         if (fxImage == null) {
-            System.out.println("[TrayFX] toBufferedImage: fxImage=null, traySize=" + size);
             return new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         }
 
         final int srcW = (int) fxImage.getWidth();
         final int srcH = (int) fxImage.getHeight();
-        System.out.println("[TrayFX] toBufferedImage: src=" + srcW + "x" + srcH + " traySize=" + size);
 
+        // Explicitly clear to transparent before conversion — on some Linux/JDK
+        // configurations SwingFXUtils.fromFXImage composites against white if the
+        // target BufferedImage has uninitialised pixels.
         final BufferedImage src = new BufferedImage(srcW, srcH, BufferedImage.TYPE_INT_ARGB);
+        final Graphics2D clear = src.createGraphics();
+        clear.setComposite(java.awt.AlphaComposite.Clear);
+        clear.fillRect(0, 0, srcW, srcH);
+        clear.dispose();
         SwingFXUtils.fromFXImage(fxImage, src);
 
         if (srcW == size && srcH == size) { return src; }
 
         final BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         final Graphics2D g = scaled.createGraphics();
+        g.setComposite(java.awt.AlphaComposite.Clear);
+        g.fillRect(0, 0, size, size);
+        g.setComposite(java.awt.AlphaComposite.SrcOver);
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         g.setRenderingHint(RenderingHints.KEY_RENDERING,     RenderingHints.VALUE_RENDER_QUALITY);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
         g.drawImage(src, 0, 0, size, size, null);
         g.dispose();
-        System.out.println("[TrayFX] toBufferedImage: scaled to " + size + "x" + size);
         return scaled;
     }
 
     private static void offThread(final Runnable task) {
-        final Thread t = new Thread(task, "trayfx-awt");
-        t.setDaemon(true);
-        t.start();
+        Thread.ofVirtual().name("trayfx-awt").start(task);
     }
 }
