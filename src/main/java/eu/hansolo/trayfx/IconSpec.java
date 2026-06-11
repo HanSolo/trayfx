@@ -63,8 +63,8 @@ public final class IconSpec {
      */
     public static final IconSpec WINDOWS = new IconSpec("Windows notification area", 16, 16, 24, 24, ScalePolicy.FIT_KEEP_ASPECT);
 
-    /** Linux panel (GNOME / KDE): 22×22 px source; scaled to actual tray size at runtime. */
-    public static final IconSpec LINUX = new IconSpec("Linux panel (appindicator)", 22, 22, 22, 22, ScalePolicy.FIT_KEEP_ASPECT);
+    /** Linux panel: 16×16 px actual rendered size (GTK renders at 2/3 of reported logical size). */
+    public static final IconSpec LINUX = new IconSpec("Linux panel (appindicator)", 16, 16, 16, 16, ScalePolicy.FIT_KEEP_ASPECT);
 
     /** Fallback for unsupported platforms — no constraints. */
     public static final IconSpec NONE = new IconSpec("No constraint", Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, ScalePolicy.NONE);

@@ -41,7 +41,7 @@ import java.awt.image.BufferedImage;
 public final class LinuxTrayIcon extends AbstractTrayIcon {
 
     private volatile java.awt.TrayIcon awtTrayIcon;
-    private          int               traySize = 24; // updated in install
+    private          int               traySize = 16; // actual rendered size (not logical size)
 
 
     @Override
@@ -55,8 +55,12 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
             try {
                 // Query the real tray slot size before creating the icon —
                 // this is the pixel size AWT will render into
+                // getTrayIconSize() returns the LOGICAL size but the actual rendered
+                // pixel size on Linux/GTK is typically 2/3 of this value.
+                // On this Ubuntu/Parallels configuration: reported=24, actual=16.
+                // Using 2/3 of the reported size matches what GTK actually renders.
                 final Dimension d = SystemTray.getSystemTray().getTrayIconSize();
-                if (d != null && d.width > 0) { traySize = d.width; }
+                if (d != null && d.width > 0) { traySize = Math.max(16, (d.width * 2) / 3); }
                 System.out.println("[TrayFX] nativeInstall: getTrayIconSize=" + d + " traySize=" + traySize);
 
                 awtTrayIcon = new java.awt.TrayIcon(toBufferedImage(getIcon()));
