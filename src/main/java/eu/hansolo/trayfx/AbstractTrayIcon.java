@@ -65,7 +65,7 @@ public abstract class AbstractTrayIcon implements TrayIcon {
         pendingUpdates.clear();
     }
 
-    /** Enqueue or apply immediately depending on native readiness. */
+    // Enqueue or apply immediately depending on native readiness
     private void applyOrQueue(final Runnable update) {
         if (nativeReady.get()) {
             update.run();
@@ -138,6 +138,8 @@ public abstract class AbstractTrayIcon implements TrayIcon {
      * Used by {@code LinuxDbusImpl} to call back into {@code LinuxTrayIcon}.
      */
     public static void doFireLeftClick(final AbstractTrayIcon icon)  { icon.fireLeftClick(); }
+
     public static void doFireRightClick(final AbstractTrayIcon icon) { icon.fireRightClick(); }
+
     public static void doOnNativeReady(final AbstractTrayIcon icon)  { icon.onNativeReady(); }
 }

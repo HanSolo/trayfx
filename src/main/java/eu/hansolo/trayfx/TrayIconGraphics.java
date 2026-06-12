@@ -16,17 +16,17 @@ import javafx.scene.text.TextAlignment;
 
 /**
  * Fluent builder that renders a tray icon {@link Image} from declarative
- * properties — text, foreground color, background shape, size and inset —
+ * properties like text, foreground color, background shape, size and inset,
  * without the caller needing to touch a {@link Canvas} directly.
  *
  * <h2>Usage</h2>
  * <pre>{@code
- * // Blood glucose — full-width rounded rectangle, white text
+ * // Blood glucose, full-width rounded rectangle, white text
  * Image icon = TrayIconGraphics.create()
  *     .text("94 ↓↓")
  *     .textColor(Color.WHITE)
  *     .background(Color.web("#2e7d32"), BackgroundShape.ROUNDED_RECT)
- *     .shapeInset(0.05)   // 5% inset on each side — almost full size
+ *     .shapeInset(0.05)   // 5% inset on each side, almost full size
  *     .build();
  *
  * // Identical result using shapeSize instead of inset:
@@ -44,18 +44,15 @@ public final class TrayIconGraphics {
      * The shape drawn behind the text content.
      */
     public enum BackgroundShape {
-        /** No background — transparent, content only. */
+        /** No background, transparent, content only. */
         NONE,
         /** Full rectangle. */
         RECT,
         /** Circle inscribed in the shape bounds. */
         CIRCLE,
-        /** Rounded rectangle — the most common choice for text badges. */
+        /** Rounded rectangle, the most common choice for text badges. */
         ROUNDED_RECT
     }
-
-
-    // ── State ─────────────────────────────────────────────────────────────
 
     private String          text;
     private Color           textColor       = Color.WHITE;
@@ -70,13 +67,11 @@ public final class TrayIconGraphics {
 
     private TrayIconGraphics() {}
 
-    /** Returns a new builder. */
+    // Returns a new builder
     public static TrayIconGraphics create() {
         return new TrayIconGraphics();
     }
 
-
-    // ── Fluent API ────────────────────────────────────────────────────────
 
     /**
      * Text to render (e.g. {@code "94 ↓↓"}, {@code "HI"}, {@code "5.4"}).
@@ -87,14 +82,14 @@ public final class TrayIconGraphics {
         return this;
     }
 
-    /** Text foreground color. Default: {@link Color#WHITE}. */
+    // Text foreground color. Default: {@link Color#WHITE}
     public TrayIconGraphics textColor(final Color color) {
         this.textColor = color != null ? color : Color.WHITE;
         return this;
     }
 
     /**
-     * Explicit font. If not set, the font is auto-sized to fill roughly
+     * Explicit font. If not set, the font is autosized to fill roughly
      * 60% of the shape height, shrinking until the text fits horizontally.
      */
     public TrayIconGraphics font(final Font font) {
@@ -111,13 +106,13 @@ public final class TrayIconGraphics {
         return this;
     }
 
-    /** Background fill color only (keeps current shape). */
+    // Background fill color only (keeps current shape)
     public TrayIconGraphics backgroundColor(final Paint color) {
         this.backgroundColor = color != null ? color : Color.TRANSPARENT;
         return this;
     }
 
-    /** Background shape only (keeps current color). */
+    // Background shape only (keeps current color)
     public TrayIconGraphics backgroundShape(final BackgroundShape shape) {
         this.backgroundShape = shape != null ? shape : BackgroundShape.NONE;
         return this;
@@ -137,10 +132,9 @@ public final class TrayIconGraphics {
      * Sets the background shape size as a <em>fraction of the icon size</em>.
      * {@code 1.0} fills the entire icon (edge to edge). {@code 0.9} leaves a
      * 5% gap on each side. {@code 0.5} makes the shape half the icon size,
-     * centred.
+     * centered.
      *
-     * <p>This overrides any previous {@link #shapeInset(double)} call and
-     * vice versa — the last one set wins.
+     * <p>This overrides any previous {@link #shapeInset(double)} call and vice versa, the last one set wins.
      *
      * <p>Default: {@code 1.0} (full size).
      */
@@ -186,71 +180,51 @@ public final class TrayIconGraphics {
     }
 
 
-    // ── Build ─────────────────────────────────────────────────────────────
-
-    /**
-     * Renders the icon. Must be called on the JavaFX Application Thread.
-     */
+    // Renders the icon. Must be called on the JavaFX Application Thread
     public Image build() {
-        final int    size    = iconSize > 0 ? iconSize : IconSpec.forCurrentPlatform().getPreferredWidth();
-        final double inset   = shapeInset > 0 ? shapeInset : size * (1.0 - shapeSize) / 2.0;
-        final double shapeW  = size - inset * 2;
-        final double shapeH  = size - inset * 2;
-        final double textPad = size * padding;
+        final int    size        = iconSize > 0 ? iconSize : IconSpec.forCurrentPlatform().getPreferredWidth();
+        final double inset       = shapeInset > 0 ? shapeInset : size * (1.0 - shapeSize) / 2.0;
+        final double shapeWidth  = size - inset * 2;
+        final double shapeHeight = size - inset * 2;
+        final double textPad     = size * padding;
 
-        final Canvas         canvas = new Canvas(size, size);
-        final GraphicsContext gc     = canvas.getGraphicsContext2D();
+        final Canvas          canvas = new Canvas(size, size);
+        final GraphicsContext ctx    = canvas.getGraphicsContext2D();
 
-        gc.clearRect(0, 0, size, size);
+        ctx.clearRect(0, 0, size, size);
 
-        // ── Background shape ──────────────────────────────────────────────
         if (backgroundShape != BackgroundShape.NONE && backgroundColor != null) {
-            gc.setFill(backgroundColor);
+            ctx.setFill(backgroundColor);
             switch (backgroundShape) {
-                case RECT ->
-                    gc.fillRect(inset, inset, shapeW, shapeH);
-
-                case CIRCLE ->
-                    gc.fillOval(inset, inset, shapeW, shapeH);
-
+                case RECT         -> ctx.fillRect(inset, inset, shapeWidth, shapeHeight);
+                case CIRCLE       -> ctx.fillOval(inset, inset, shapeWidth, shapeHeight);
                 case ROUNDED_RECT -> {
-                    final double arc = Math.min(shapeW, shapeH) * cornerRadius * 2;
-                    gc.fillRoundRect(inset, inset, shapeW, shapeH, arc, arc);
+                    final double arc = Math.min(shapeWidth, shapeHeight) * cornerRadius * 2;
+                    ctx.fillRoundRect(inset, inset, shapeWidth, shapeHeight, arc, arc);
                 }
-                default -> {}
+                default           -> {}
             }
         }
 
-        // ── Text ──────────────────────────────────────────────────────────
         if (text != null && !text.isEmpty()) {
-            final double maxTextW = shapeW - textPad * 2;
-            final Font   f        = resolveFont(size, shapeH, maxTextW);
+            final double maxTextWidth = shapeWidth - textPad * 2;
+            final Font   resolveFont  = resolveFont(size, shapeHeight, maxTextWidth);
 
-            gc.setFill(textColor);
-            gc.setFont(f);
-            gc.setTextBaseline(VPos.CENTER);
-            gc.setTextAlign(TextAlignment.CENTER);
-            // Centre text within the shape, not the whole icon
-            gc.fillText(text, inset + shapeW / 2.0, inset + shapeH / 2.0);
+            ctx.setFill(textColor);
+            ctx.setFont(resolveFont);
+            ctx.setTextBaseline(VPos.CENTER);
+            ctx.setTextAlign(TextAlignment.CENTER);
+            ctx.fillText(text, inset + shapeWidth / 2.0, inset + shapeHeight / 2.0);
         }
 
-        // Pre-fill the target WritableImage with transparent pixels before snapshot.
-        // On Linux, Canvas.snapshot() with SnapshotParameters(TRANSPARENT) has a bug
-        // where it composites against white. Pre-filling with zeros ensures pixels
-        // outside the drawn content remain fully transparent.
-        final WritableImage snapshot = new WritableImage(size, size);
-        final int[] transparent = new int[size * size];
-        snapshot.getPixelWriter().setPixels(0, 0, size, size,
-            javafx.scene.image.PixelFormat.getIntArgbInstance(), transparent, 0, size);
-
+        final WritableImage snapshot    = new WritableImage(size, size);
+        final int[]         transparent = new int[size * size];
+        snapshot.getPixelWriter().setPixels(0, 0, size, size, javafx.scene.image.PixelFormat.getIntArgbInstance(), transparent, 0, size);
         final SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
         canvas.snapshot(params, snapshot);
         return snapshot;
     }
-
-
-    // ── Private helpers ───────────────────────────────────────────────────
 
     private Font resolveFont(final int iconSize, final double shapeH, final double maxW) {
         if (font != null) { return font; }

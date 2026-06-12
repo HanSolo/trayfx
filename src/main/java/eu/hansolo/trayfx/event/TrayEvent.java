@@ -2,7 +2,7 @@ package eu.hansolo.trayfx.event;
 
 
 /**
- * Fired when the user interacts with the tray / menu-bar icon.
+ * Fired when the user interacts with the tray or menu-bar icon.
  */
 public final class TrayEvent {
     private final TrayEventType type;

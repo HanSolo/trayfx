@@ -54,19 +54,17 @@ import javafx.scene.image.WritableImage;
  * }</pre>
  */
 public final class IconSpec {
-    /** macOS menu bar icon: 22×22 px maximum (Retina-aware: 44×44 px @2×). */
+    // macOS menu bar icon: 22×22 px maximum (Retina-aware: 44×44 px @2×)
     public static final IconSpec MACOS = new IconSpec("macOS menu bar", 22, 22, 44, 44, ScalePolicy.FIT_KEEP_ASPECT);
 
-    /**
-     * Windows notification area: 24×24 px is the largest size used by the
-     * shell; 16×16 is the minimum rendered size.
-     */
+
+    //Windows notification area: 24×24 px is the largest size used by the shell -> 16×16 is the minimum rendered size
     public static final IconSpec WINDOWS = new IconSpec("Windows notification area", 16, 16, 24, 24, ScalePolicy.FIT_KEEP_ASPECT);
 
-    /** Linux panel: 16×16 px actual rendered size (GTK renders at 2/3 of reported logical size). */
+    // Linux panel: 16×16 px actual rendered size (GTK renders at 2/3 of reported logical size)
     public static final IconSpec LINUX = new IconSpec("Linux panel (appindicator)", 16, 16, 16, 16, ScalePolicy.FIT_KEEP_ASPECT);
 
-    /** Fallback for unsupported platforms — no constraints. */
+    // Fallback for unsupported platforms — no constraints.
     public static final IconSpec NONE = new IconSpec("No constraint", Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, ScalePolicy.NONE);
 
 
@@ -88,7 +86,7 @@ public final class IconSpec {
     }
 
 
-    /** Returns the {@link IconSpec} appropriate for the current platform. */
+    // Returns the {@link IconSpec} appropriate for the current platform
     public static IconSpec forCurrentPlatform() {
         return switch (Platform.current()) {
             case MACOS       -> MACOS;
@@ -98,24 +96,19 @@ public final class IconSpec {
         };
     }
 
-    /** Human-readable description of this spec (e.g. "macOS menu bar"). */
+    // Human-readable description of this spec (e.g. "macOS menu bar")
     public String getDescription() { return description; }
 
-    /**
-     * Recommended minimum icon width in pixels.
-     * Smaller images will appear blurry due to upscaling by the OS.
-     */
+    // Recommended minimum icon width in pixels, smaller images will appear blurry due to upscaling by the OS
     public int getMinWidth()  { return minWidth;  }
     public int getMinHeight() { return minHeight; }
 
-    /**
-     * Maximum icon width in pixels.
-     * Images wider than this will be scaled down (with quality loss) by the OS.
-     */
+
+    // Maximum icon width in pixels, images wider than this will be scaled down (with quality loss) by the OS
     public int getMaxWidth()  { return maxWidth;  }
     public int getMaxHeight() { return maxHeight; }
 
-    /** Returns the preferred (ideal) width — currently the maximum. */
+    // Returns the preferred (ideal) width, currently the maximum
     public int getPreferredWidth()  { return maxWidth;  }
     public int getPreferredHeight() { return maxHeight; }
 
@@ -156,21 +149,21 @@ public final class IconSpec {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         if (scalePolicy == ScalePolicy.NONE || isSuitable(image)) { return image; }
 
-        final int srcW = (int) image.getWidth();
-        final int srcH = (int) image.getHeight();
-        final int dstW;
-        final int dstH;
+        final int sourceWidth  = (int) image.getWidth();
+        final int sourceHeight = (int) image.getHeight();
+        final int destinationWidth;
+        final int destinationHeight;
 
         if (scalePolicy == ScalePolicy.FIT_KEEP_ASPECT) {
-            final double scale = Math.min((double) maxWidth / srcW, (double) maxHeight / srcH);
-            dstW = Math.max(1, (int) Math.round(srcW * scale));
-            dstH = Math.max(1, (int) Math.round(srcH * scale));
+            final double scale = Math.min((double) maxWidth / sourceWidth, (double) maxHeight / sourceHeight);
+            destinationWidth  = Math.max(1, (int) Math.round(sourceWidth * scale));
+            destinationHeight = Math.max(1, (int) Math.round(sourceHeight * scale));
         } else {
             // Fit Stretch (fill max box width)
-            dstW = maxWidth;
-            dstH = maxHeight;
+            destinationWidth  = maxWidth;
+            destinationHeight = maxHeight;
         }
-        return scale(image, srcW, srcH, dstW, dstH);
+        return scale(image, sourceWidth, sourceHeight, destinationWidth, destinationHeight);
     }
 
     /**
@@ -179,26 +172,26 @@ public final class IconSpec {
      */
     public Image fitExact(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
-        final int srcW = (int) image.getWidth();
-        final int srcH = (int) image.getHeight();
-        if (srcW == maxWidth && srcH == maxHeight) { return image; }
-        return scale(image, srcW, srcH, maxWidth, maxHeight);
+        final int sourceWidth  = (int) image.getWidth();
+        final int sourceHeight = (int) image.getHeight();
+        if (sourceWidth == maxWidth && sourceHeight == maxHeight) { return image; }
+        return scale(image, sourceWidth, sourceHeight, maxWidth, maxHeight);
     }
 
 
     private static Image scale(final Image src, final int srcWidth, final int srcHeight, final int destWidth, final int destHeight) {
-        final WritableImage dst    = new WritableImage(destWidth, destHeight);
-        final PixelReader   reader = src.getPixelReader();
-        final PixelWriter   writer = dst.getPixelWriter();
+        final WritableImage destination = new WritableImage(destWidth, destHeight);
+        final PixelReader   reader      = src.getPixelReader();
+        final PixelWriter   writer      = destination.getPixelWriter();
 
         for (int y = 0; y < destHeight; y++) {
             for (int x = 0; x < destWidth; x++) {
-                final int srcX = Math.min((int) ((double) x / destWidth * srcWidth), srcWidth - 1);
-                final int srcY = Math.min((int) ((double) y / destHeight * srcHeight), srcHeight - 1);
-                writer.setArgb(x, y, reader.getArgb(srcX, srcY));
+                final int sourceX = Math.min((int) ((double) x / destWidth * srcWidth), srcWidth - 1);
+                final int sourceY = Math.min((int) ((double) y / destHeight * srcHeight), srcHeight - 1);
+                writer.setArgb(x, y, reader.getArgb(sourceX, sourceY));
             }
         }
-        return dst;
+        return destination;
     }
 
     @Override public String toString() {

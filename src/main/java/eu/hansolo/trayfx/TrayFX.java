@@ -60,26 +60,23 @@ public final class TrayFX {
     private TrayFX() {}
 
 
-    /** Returns a new {@link Builder}. */
+    // Returns a new {@link Builder}
     public static Builder trayIcon() {
         return new Builder();
     }
 
-    /** Returns the platform TrayFX is running on. */
+    // Returns the platform TrayFX is running on
     public static Platform currentPlatform() {
         return Platform.current();
     }
 
-    /** Returns {@code true} if TrayFX is supported on the current platform. */
+    // Returns {@code true} if TrayFX is supported on the current platform
     public static boolean isSupported() {
         return Platform.current() != Platform.UNSUPPORTED;
     }
 
 
-    // ── Builder ───────────────────────────────────────────────────────────
-
     public static final class Builder {
-
         private Image                icon;
         private String               text;
         private Color                textColor  = Color.BLACK;
@@ -132,36 +129,28 @@ public final class TrayFX {
          * @throws UnsupportedOperationException if the platform is unsupported
          */
         public TrayIcon install() {
-            if (!isSupported()) {
-                throw new UnsupportedOperationException(
-                    "TrayFX is not supported on: " + System.getProperty("os.name"));
-            }
+            if (!isSupported()) { throw new UnsupportedOperationException("TrayFX is not supported on: " + System.getProperty("os.name")); }
 
             // Keep the app alive when the last window closes
             javafx.application.Platform.setImplicitExit(false);
 
             final AbstractTrayIcon impl = createImpl();
-
-            // Push all properties into the pending queue — they will be
-            // drained in this order once native installation completes
-            if (icon      != null) { impl.setIcon(icon); }
-            if (text      != null) { impl.setText(text); }
-            if (textColor != null) { impl.setTextColor(textColor); }
-            if (menu      != null) { impl.setMenu(menu); }
+            if (icon         != null) { impl.setIcon(icon); }
+            if (text         != null) { impl.setText(text); }
+            if (textColor    != null) { impl.setTextColor(textColor); }
+            if (menu         != null) { impl.setMenu(menu); }
             if (onLeftClick  != null) { impl.setOnLeftClick(onLeftClick); }
             if (onRightClick != null) { impl.setOnRightClick(onRightClick); }
 
-            // Trigger async native installation
             impl.install();
-
             return impl;
         }
 
         private AbstractTrayIcon createImpl() {
             return switch (Platform.current()) {
-                case MACOS   -> new MacOSTrayIcon();
-                case WINDOWS -> new WindowsTrayIcon();
-                case LINUX   -> new LinuxTrayIcon();
+                case MACOS       -> new MacOSTrayIcon();
+                case WINDOWS     -> new WindowsTrayIcon();
+                case LINUX       -> new LinuxTrayIcon();
                 case UNSUPPORTED -> throw new UnsupportedOperationException();
             };
         }

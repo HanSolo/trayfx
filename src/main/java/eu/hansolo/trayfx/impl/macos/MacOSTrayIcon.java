@@ -1,15 +1,13 @@
 package eu.hansolo.trayfx.impl.macos;
 
 import eu.hansolo.trayfx.AbstractTrayIcon;
-import eu.hansolo.trayfx.menu.MenuItem;
 import eu.hansolo.trayfx.menu.TrayMenu;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
-import java.awt.AWTException;
-import java.awt.SystemTray;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 
 
@@ -35,7 +33,6 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
                 if (getText() != null) { awtTrayIcon.setToolTip(getText()); }
                 applyAwtMenu();
                 SystemTray.getSystemTray().add(awtTrayIcon);
-                // Signal the base class that native init is complete any queued updates (setIcon, setText, setMenu called before install finished) will now be drained and applied in order.
                 onNativeReady();
             } catch (AWTException e) {
                 throw new RuntimeException("Failed to install tray icon", e);
@@ -69,40 +66,38 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
 
 
     private void applyAwtMenu() {
-        final java.awt.TrayIcon t = awtTrayIcon;
-        if (t == null) { return; }
+        final java.awt.TrayIcon trayIcon = awtTrayIcon;
+        if (trayIcon == null) { return; }
 
-        final TrayMenu menu = getMenu();
-        if (menu == null || menu.isEmpty()) {
-            t.setPopupMenu(null);
+        final TrayMenu trayMenu = getMenu();
+        if (trayMenu == null || trayMenu.isEmpty()) {
+            trayIcon.setPopupMenu(null);
             return;
         }
 
         final java.awt.PopupMenu popup = new java.awt.PopupMenu();
-        for (final MenuItem item : menu.getItems()) {
+        trayMenu.getItems().forEach(item -> {
             if (item.isSeparator()) {
                 popup.addSeparator();
             } else {
-                final java.awt.MenuItem awtItem = new java.awt.MenuItem(item.getLabel());
+                final MenuItem awtItem = new MenuItem(item.getLabel());
                 awtItem.setEnabled(item.isEnabled());
                 awtItem.addActionListener(e -> Platform.runLater(item::fire));
                 popup.add(awtItem);
             }
-        }
-        t.setPopupMenu(popup);
+        });
+        trayIcon.setPopupMenu(popup);
     }
 
     private static BufferedImage toBufferedImage(final Image fxImage) {
         if (fxImage == null) { return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB); }
-        final int w = (int) fxImage.getWidth();
-        final int h = (int) fxImage.getHeight();
-        final BufferedImage argb = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        // Clear to transparent before conversion — on some JDK/platform configurations
-        // SwingFXUtils.fromFXImage composites against white if pixels are uninitialised.
-        final java.awt.Graphics2D clear = argb.createGraphics();
-        clear.setComposite(java.awt.AlphaComposite.Clear);
-        clear.fillRect(0, 0, w, h);
-        clear.dispose();
+        final int                 width  = (int) fxImage.getWidth();
+        final int                 height = (int) fxImage.getHeight();
+        final BufferedImage       argb   = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        final java.awt.Graphics2D g2d    = argb.createGraphics();
+        g2d.setComposite(java.awt.AlphaComposite.Clear);
+        g2d.fillRect(0, 0, width, height);
+        g2d.dispose();
         SwingFXUtils.fromFXImage(fxImage, argb);
         return argb;
     }

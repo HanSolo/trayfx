@@ -42,10 +42,6 @@ public class TrayFXExample extends Application {
     private Label                    statusLabel;
 
 
-    @Override public void init() {
-
-    }
-
 
     @Override public void start(final Stage stage) {
         this.stage = stage;
@@ -161,43 +157,42 @@ public class TrayFXExample extends Application {
         final IconSpec spec = IconSpec.forCurrentPlatform();
         final int      size = spec.getPreferredWidth();
 
-        final Canvas         canvas = new Canvas(size, size);
-        final GraphicsContext gc     = canvas.getGraphicsContext2D();
-        final double cx = size / 2.0, cy = size / 2.0, r = size / 2.0 - 1;
+        final Canvas          canvas = new Canvas(size, size);
+        final GraphicsContext ctx    = canvas.getGraphicsContext2D();
+        final double centerX = size / 2.0;
+        final double centerY = size / 2.0;
+        final double radius  = size / 2.0 - 1;
 
-        gc.clearRect(0, 0, size, size);
+        ctx.clearRect(0, 0, size, size);
 
-        // On Linux, Canvas.snapshot() transparency is broken — white background
-        // bleeds through regardless of SnapshotParameters. Use a solid colored
-        // circle background so the icon looks correct on any tray color.
         final boolean isLinux = eu.hansolo.trayfx.Platform.current() == eu.hansolo.trayfx.Platform.LINUX;
-        if (isLinux) {
-            gc.setFill(accent.darker());
-            gc.fillOval(0, 0, size, size);
+        if (isLinux) { // On Linux the snapshot always has a white background, no matter what snapshot parameters used, therefore we fill the clock background
+            ctx.setFill(accent.darker());
+            ctx.fillOval(0, 0, size, size);
         } else {
-        gc.setFill(Color.WHITE.deriveColor(0, 1, 1, 0.85));
-        gc.fillOval(1, 1, size - 2, size - 2);
-        gc.setStroke(accent);
-        gc.setLineWidth(Math.max(1, size / 16.0));
-        gc.strokeOval(1, 1, size - 2, size - 2);
+            ctx.setFill(Color.WHITE.deriveColor(0, 1, 1, 0.85));
+            ctx.fillOval(1, 1, size - 2, size - 2);
+            ctx.setStroke(accent);
+            ctx.setLineWidth(Math.max(1, size / 16.0));
+            ctx.strokeOval(1, 1, size - 2, size - 2);
         }
 
         final double hourAngle  = Math.toRadians((time.getHour() % 12) * 30.0 + time.getMinute() * 0.5 - 90);
-        gc.setStroke(isLinux ? Color.WHITE : Color.DARKSLATEGRAY);
-        gc.setLineWidth(Math.max(1.5, size / 11.0));
-        gc.strokeLine(cx, cy, cx + Math.cos(hourAngle) * r * 0.5, cy + Math.sin(hourAngle) * r * 0.5);
+        ctx.setStroke(isLinux ? Color.WHITE : Color.DARKSLATEGRAY);
+        ctx.setLineWidth(Math.max(1.5, size / 11.0));
+        ctx.strokeLine(centerX, centerY, centerX + Math.cos(hourAngle) * radius * 0.5, centerY + Math.sin(hourAngle) * radius * 0.5);
 
         final double minAngle = Math.toRadians(time.getMinute() * 6.0 - 90);
-        gc.setStroke(isLinux ? Color.WHITE : accent);
-        gc.setLineWidth(Math.max(1, size / 14.0));
-        gc.strokeLine(cx, cy, cx + Math.cos(minAngle) * r * 0.72, cy + Math.sin(minAngle) * r * 0.72);
+        ctx.setStroke(isLinux ? Color.WHITE : accent);
+        ctx.setLineWidth(Math.max(1, size / 14.0));
+        ctx.strokeLine(centerX, centerY, centerX + Math.cos(minAngle) * radius * 0.72, centerY + Math.sin(minAngle) * radius * 0.72);
 
         final double dotR = Math.max(1.5, size / 10.0);
-        gc.setFill(isLinux ? Color.WHITE : accent);
-        gc.fillOval(cx - dotR, cy - dotR, dotR * 2, dotR * 2);
+        ctx.setFill(isLinux ? Color.WHITE : accent);
+        ctx.fillOval(centerX - dotR, centerY - dotR, dotR * 2, dotR * 2);
 
-        final WritableImage snapshot = new WritableImage(size, size);
-        final SnapshotParameters params = new SnapshotParameters();
+        final WritableImage      snapshot = new WritableImage(size, size);
+        final SnapshotParameters params   = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
         canvas.snapshot(params, snapshot);
         return snapshot;

@@ -20,38 +20,31 @@ import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder;
  * {@code onNativeReady()} can be called on the correct base instance.
  */
 public final class LinuxDbusImpl extends AbstractTrayIcon {
+    private static final String                   SNI_WATCHER_BUS  = "org.kde.StatusNotifierWatcher";
+    private static final String                   SNI_WATCHER_PATH = "/StatusNotifierWatcher";
 
-    private static final String SNI_WATCHER_BUS  = "org.kde.StatusNotifierWatcher";
-    private static final String SNI_WATCHER_PATH = "/StatusNotifierWatcher";
+    private        final AbstractTrayIcon         parent;
+    private              DBusConnection           connection;
+    private              StatusNotifierItemExport sniExport;
 
-    private final AbstractTrayIcon         parent;
-    private DBusConnection                 connection;
-    private StatusNotifierItemExport       sniExport;
 
     public LinuxDbusImpl(final AbstractTrayIcon parent) {
         this.parent = parent;
     }
 
-    @Override
-    protected void nativeInstall() {
+
+    @Override protected void nativeInstall() {
         offThread(() -> {
             try {
-                connection = DBusConnectionBuilder.forSessionBus()
-                    .withShared(false)
-                    .build();
+                connection = DBusConnectionBuilder.forSessionBus().withShared(false).build();
 
                 final String pid     = getPid();
                 final String busName = "org.kde.StatusNotifierItem-" + pid + "-1";
                 connection.requestBusName(busName);
 
-                sniExport = new StatusNotifierItemExport(
-                    connection,
-                    v -> AbstractTrayIcon.doFireLeftClick(parent),
-                    v -> AbstractTrayIcon.doFireRightClick(parent)
-                );
+                sniExport = new StatusNotifierItemExport(connection, v -> AbstractTrayIcon.doFireLeftClick(parent), v -> AbstractTrayIcon.doFireRightClick(parent));
                 connection.exportObject(StatusNotifierItemExport.OBJECT_PATH, sniExport);
-                connection.exportObject(StatusNotifierItemExport.MENU_PATH,
-                    sniExport.getMenuExport());
+                connection.exportObject(StatusNotifierItemExport.MENU_PATH, sniExport.getMenuExport());
 
                 if (getIcon() != null) { sniExport.setIcon(getIcon()); }
                 if (getText() != null) {
@@ -73,8 +66,7 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUninstall() {
+    @Override protected void nativeUninstall() {
         offThread(() -> {
             if (connection != null) {
                 try { connection.disconnect(); } catch (final Exception ignored) {}
@@ -84,27 +76,24 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
         });
     }
 
-    @Override
-    protected void nativeUpdateIcon(final Image icon) {
+    @Override protected void nativeUpdateIcon(final Image icon) {
         offThread(() -> {
             final StatusNotifierItemExport s = sniExport;
             if (s != null) { s.setIcon(icon); }
         });
     }
 
-    @Override
-    protected void nativeUpdateText(final String text, final Color color) {
+    @Override protected void nativeUpdateText(final String text, final Color color) {
         offThread(() -> {
             final StatusNotifierItemExport s = sniExport;
             if (s != null) {
-                s.setTitle(text != null ? text : "");
+                s.setTitle(text   != null ? text : "");
                 s.setToolTip(text != null ? text : "");
             }
         });
     }
 
-    @Override
-    protected void nativeUpdateMenu(final TrayMenu menu) {
+    @Override protected void nativeUpdateMenu(final TrayMenu menu) {
         offThread(() -> {
             final StatusNotifierItemExport s = sniExport;
             if (s != null) { s.setMenu(menu); }
@@ -113,12 +102,10 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
 
     private void registerWithWatcher(final String busName) {
         try {
-            final StatusNotifierWatcherInterface watcher =
-                connection.getRemoteObject(SNI_WATCHER_BUS, SNI_WATCHER_PATH,
-                    StatusNotifierWatcherInterface.class);
+            final StatusNotifierWatcherInterface watcher = connection.getRemoteObject(SNI_WATCHER_BUS, SNI_WATCHER_PATH, StatusNotifierWatcherInterface.class);
             watcher.RegisterStatusNotifierItem(busName);
-        } catch (final Exception e) {
-            System.err.println("[TrayFX] StatusNotifierWatcher not available: " + e.getMessage());
+        } catch (final Exception ignored) {
+            // Watcher may not be available — icon will appear when a tray host starts
         }
     }
 

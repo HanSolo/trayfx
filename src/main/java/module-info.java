@@ -1,7 +1,5 @@
 module eu.hansolo.trayfx {
     requires java.desktop;
-    requires java.management;
-
     requires javafx.base;
     requires javafx.graphics;
     requires javafx.controls;

@@ -1,25 +1,28 @@
 package eu.hansolo.trayfx.impl.linux;
 
-import org.freedesktop.dbus.Struct;
+import org.freedesktop.dbus.Tuple;
 import org.freedesktop.dbus.annotations.Position;
 import org.freedesktop.dbus.types.UInt32;
 
 
 /**
- * Return type for {@code com.canonical.dbusmenu.GetLayout}.
- * D-Bus type signature: {@code (u(ia{sv}av))}
+ * Return type for GetLayout. D-Bus type: (u(ia{sv}av))
+ *
+ * Uses Tuple with unbounded generic type parameters, this is the pattern
+ * that works in dbus-java 5.x. Bounded generics (<A extends UInt32>) cause
+ * ClassCastException during introspection. Unbounded generics with concrete
+ * field declarations allow dbus-java to reflect on the actual field types.
  */
-public final class GetLayoutResult extends Struct {
+public final class GetLayoutResult<A, B> extends Tuple {
 
     @Position(0)
-    public final UInt32          revision;
+    public final A first;
 
     @Position(1)
-    public final MenuLayoutItem  layout;
+    public final B second;
 
-    public GetLayoutResult(final UInt32         revision,
-                           final MenuLayoutItem layout) {
-        this.revision = revision;
-        this.layout   = layout;
+    public GetLayoutResult(final A first, final B second) {
+        this.first  = first;
+        this.second = second;
     }
 }

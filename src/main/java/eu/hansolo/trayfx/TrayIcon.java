@@ -15,9 +15,6 @@ import java.util.function.Consumer;
  * {@link TrayFX.Builder#install()} to register it with the OS.
  */
 public interface TrayIcon {
-
-    // ── Lifecycle ────────────────────────────────────────────────────────────
-
     /**
      * Registers the icon with the OS and makes it visible.
      * Must be called after the JavaFX toolkit has started.
@@ -35,46 +32,21 @@ public interface TrayIcon {
     boolean isInstalled();
 
 
-    // ── Icon ─────────────────────────────────────────────────────────────────
-
-    /** Replaces the displayed icon. Pass {@code null} to show text only. */
+    Image getIcon();
     void setIcon(Image icon);
 
-    Image getIcon();
-
-
-    // ── Text ─────────────────────────────────────────────────────────────────
-
-    /**
-     * Sets the text label shown next to (macOS) or as tooltip (Windows/Linux).
-     * Pass {@code null} or empty string to hide text.
-     */
+    String getText();
     void setText(String text);
 
-    String getText();
-
-    /**
-     * Sets the color of the text label (best-effort; not all platforms support
-     * arbitrary color; falls back to system default where unsupported).
-     */
+    Color getTextColor();
     void setTextColor(Color color);
 
-    Color getTextColor();
-
-
-    // ── Menu ─────────────────────────────────────────────────────────────────
-
-    /** Replaces the popup / dropdown menu. Pass {@code null} to remove it. */
+    TrayMenu getMenu();
     void setMenu(TrayMenu menu);
 
-    TrayMenu getMenu();
-
-
-    // ── Events ───────────────────────────────────────────────────────────────
-
-    void setOnLeftClick(Consumer<TrayEvent> handler);
-    void setOnRightClick(Consumer<TrayEvent> handler);
-
     Consumer<TrayEvent> getOnLeftClick();
+    void setOnLeftClick(Consumer<TrayEvent> handler);
+
     Consumer<TrayEvent> getOnRightClick();
+    void setOnRightClick(Consumer<TrayEvent> handler);
 }
