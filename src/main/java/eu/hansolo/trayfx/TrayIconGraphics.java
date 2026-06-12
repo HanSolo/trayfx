@@ -182,7 +182,7 @@ public final class TrayIconGraphics {
 
     // Renders the icon. Must be called on the JavaFX Application Thread
     public Image build() {
-        final int    size        = iconSize > 0 ? iconSize : IconSpec.forCurrentPlatform().getPreferredWidth();
+        final int    size        = iconSize   > 0 ? iconSize   : IconSpec.forCurrentPlatform().getPreferredWidth();
         final double inset       = shapeInset > 0 ? shapeInset : size * (1.0 - shapeSize) / 2.0;
         final double shapeWidth  = size - inset * 2;
         final double shapeHeight = size - inset * 2;
