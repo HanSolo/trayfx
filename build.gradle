@@ -91,6 +91,7 @@ tasks.register('runExample', JavaExec) {
     }
 
     jvmArgs '-Dapple.awt.UIElement=true'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
 sourceSets {

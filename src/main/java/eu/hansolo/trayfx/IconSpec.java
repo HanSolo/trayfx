@@ -20,7 +20,8 @@ import javafx.scene.image.WritableImage;
  * colours are supported via {@code NSStatusBarButton.attributedTitle} but the
  * icon itself should still be square and no taller than 22 px (1×).
  * Providing a non-square or oversized image causes AppKit to scale it down,
- * often with visible quality loss.
+ * often with visible quality loss. You can also set a maxWidth parameter on MacOS
+ * which will limit the icon width to 178px.
  *
  * <h3>Windows</h3>
  * The notification area (system tray) uses icons whose size tracks the DPI
@@ -54,18 +55,10 @@ import javafx.scene.image.WritableImage;
  * }</pre>
  */
 public final class IconSpec {
-    // macOS menu bar icon: 22×22 px maximum (Retina-aware: 44×44 px @2×)
-    public static final IconSpec MACOS = new IconSpec("macOS menu bar", 22, 22, 44, 44, ScalePolicy.FIT_KEEP_ASPECT);
-
-
-    //Windows notification area: 24×24 px is the largest size used by the shell -> 16×16 is the minimum rendered size
-    public static final IconSpec WINDOWS = new IconSpec("Windows notification area", 16, 16, 24, 24, ScalePolicy.FIT_KEEP_ASPECT);
-
-    // Linux panel: 16×16 px actual rendered size (GTK renders at 2/3 of reported logical size)
-    public static final IconSpec LINUX = new IconSpec("Linux panel (appindicator)", 16, 16, 16, 16, ScalePolicy.FIT_KEEP_ASPECT);
-
-    // Fallback for unsupported platforms — no constraints.
-    public static final IconSpec NONE = new IconSpec("No constraint", Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, ScalePolicy.NONE);
+    public static final IconSpec MACOS   = new IconSpec("macOS menu bar", 22, 22, 44, 44, ScalePolicy.FIT_KEEP_ASPECT, 178);
+    public static final IconSpec WINDOWS = new IconSpec("Windows notification area", 16, 16, 24, 24, ScalePolicy.FIT_KEEP_ASPECT, -1);
+    public static final IconSpec LINUX   = new IconSpec("Linux panel (appindicator)", 16, 16, 16, 16, ScalePolicy.FIT_KEEP_ASPECT, -1);
+    public static final IconSpec NONE    = new IconSpec("No constraint", Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, ScalePolicy.NONE, -1);
 
 
     private final String      description;
@@ -74,15 +67,17 @@ public final class IconSpec {
     private final int         maxWidth;
     private final int         maxHeight;
     private final ScalePolicy scalePolicy;
+    private final int         maxShapeWidth;
 
 
-    private IconSpec(final String description, final int minWidth, final int minHeight, final int maxWidth, final int maxHeight, final ScalePolicy scalePolicy) {
-        this.description = description;
-        this.minWidth    = minWidth;
-        this.minHeight   = minHeight;
-        this.maxWidth    = maxWidth;
-        this.maxHeight   = maxHeight;
-        this.scalePolicy = scalePolicy;
+    private IconSpec(final String description, final int minWidth, final int minHeight, final int maxWidth, final int maxHeight, final ScalePolicy scalePolicy, final int maxShapeWidth) {
+        this.description   = description;
+        this.minWidth      = minWidth;
+        this.minHeight     = minHeight;
+        this.maxWidth      = maxWidth;
+        this.maxHeight     = maxHeight;
+        this.scalePolicy   = scalePolicy;
+        this.maxShapeWidth = maxShapeWidth;
     }
 
 
@@ -108,6 +103,9 @@ public final class IconSpec {
     public int getMaxWidth()  { return maxWidth;  }
     public int getMaxHeight() { return maxHeight; }
 
+    // Max canvas width for ROUNDED_RECT / RECT shapes. -1 = unconstrained.
+    public int getMaxShapeWidth() { return maxShapeWidth; }
+
     // Returns the preferred (ideal) width, currently the maximum
     public int getPreferredWidth()  { return maxWidth;  }
     public int getPreferredHeight() { return maxHeight; }
@@ -124,10 +122,8 @@ public final class IconSpec {
         return (int) image.getWidth()  <= maxWidth && (int) image.getHeight() <= maxHeight;
     }
 
-    /**
-     * Returns {@code true} if {@code image} meets the minimum size
-     * requirement (i.e. will not be blurry due to upscaling).
-     */
+
+    // Returns {@code true} if {@code image} meets the minimum size requirement (i.e. will not be blurry due to upscaling).
     public boolean isLargeEnough(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         return (int) image.getWidth()  >= minWidth && (int) image.getHeight() >= minHeight;
@@ -159,17 +155,13 @@ public final class IconSpec {
             destinationWidth  = Math.max(1, (int) Math.round(sourceWidth * scale));
             destinationHeight = Math.max(1, (int) Math.round(sourceHeight * scale));
         } else {
-            // Fit Stretch (fill max box width)
             destinationWidth  = maxWidth;
             destinationHeight = maxHeight;
         }
         return scale(image, sourceWidth, sourceHeight, destinationWidth, destinationHeight);
     }
 
-    /**
-     * Like {@link #fit(Image)}, but scales to exactly the preferred
-     * (maximum) dimensions, stretching if necessary.
-     */
+    // Like {@link #fit(Image)}, but scales to exactly the preferred (maximum) dimensions, stretching if necessary
     public Image fitExact(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         final int sourceWidth  = (int) image.getWidth();

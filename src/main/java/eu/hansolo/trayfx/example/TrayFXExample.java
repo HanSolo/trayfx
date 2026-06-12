@@ -72,7 +72,7 @@ public class TrayFXExample extends Application {
                                                         .separator()
                                                         .item(MenuItem.of("Clock icon",   () -> setClockIcon(Color.DODGERBLUE)))
                                                         .separator()
-                                                        .item(MenuItem.of("Normal (5.4)", () -> setGlucose("5.4", Color.MEDIUMSEAGREEN)))
+                                                        .item(MenuItem.of("Normal 155 ↓↓", () -> setGlucose("155 ↓↓", Color.MEDIUMSEAGREEN)))
                                                         .item(MenuItem.of("Low    (3.2)", () -> setGlucose("LO",  Color.TOMATO)))
                                                         .item(MenuItem.of("High   (14)",  () -> setGlucose("HI",  Color.ORANGE)))
                                                         .separator()
@@ -124,7 +124,8 @@ public class TrayFXExample extends Application {
                                                .textColor(Color.WHITE)
                                                .background(bgColor, BackgroundShape.ROUNDED_RECT)
                                                .shapeInset(1)
-                                               .cornerRadius(0.40)
+                                               .cornerRadius(0.50)
+                                               .maxWidth(178)
                                                .build();
             tray.setIcon(icon);
             tray.setText(value);
