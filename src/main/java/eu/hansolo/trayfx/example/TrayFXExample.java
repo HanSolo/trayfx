@@ -20,12 +20,16 @@ import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
 import java.time.LocalTime;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -64,6 +68,9 @@ public class TrayFXExample extends Application {
         stage.show();
 
         // ── Install tray icon — one call, no threading concerns ────────────
+        // Check item — tracks its own state
+        final MenuItem notifyItem  = MenuItem.checkItem("Show notifications", true, checked -> {});
+
         tray = TrayFX.trayIcon().icon(buildClockIcon(LocalTime.now()))
                                 .text(LocalTime.now().format(TIME_FMT))
                                 .textColor(Color.DODGERBLUE)
@@ -71,10 +78,18 @@ public class TrayFXExample extends Application {
                                                         .item(MenuItem.of("Hide window",  () -> Platform.runLater(this::hideWindow)))
                                                         .separator()
                                                         .item(MenuItem.of("Clock icon",   () -> setClockIcon(Color.DODGERBLUE)))
+                                                        .item(MenuItem.of("Gradient icon",() -> setGradientIcon()))
                                                         .separator()
                                                         .item(MenuItem.of("Normal 155 ↓↓", () -> setGlucose("155 ↓↓", Color.MEDIUMSEAGREEN)))
                                                         .item(MenuItem.of("Low    (3.2)", () -> setGlucose("LO",  Color.TOMATO)))
                                                         .item(MenuItem.of("High   (14)",  () -> setGlucose("HI",  Color.ORANGE)))
+                                                        .separator()
+                                                        .item(notifyItem)
+                                                        .item(MenuItem.of("Send notification", () -> {
+                                                            if (notifyItem.isChecked()) {
+                                                                tray.showNotification("TrayFX", "Hello from TrayFX! 🎉");
+                                                            }
+                                                        }))
                                                         .separator()
                                                         .item(MenuItem.of("Quit",         () -> Platform.runLater(this::quit)))
                                                         .build())
@@ -114,6 +129,23 @@ public class TrayFXExample extends Application {
             tray.setIcon(buildClockIcon(LocalTime.now(), accent));
             tray.setTextColor(accent);
             setStatus("Clock icon");
+        });
+    }
+
+    private void setGradientIcon() {
+        Platform.runLater(() -> {
+            final LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+                new Stop(0.0, Color.web("#1565C0")),
+                new Stop(1.0, Color.web("#42A5F5")));
+            final Image icon = TrayIconGraphics.create()
+                                               .text("FX")
+                                               .textColor(Color.WHITE)
+                                               .backgroundGradient(gradient, BackgroundShape.ROUNDED_RECT)
+                                               .shapeInset(1)
+                                               .cornerRadius(0.40)
+                                               .build();
+            tray.setIcon(icon);
+            setStatus("Gradient icon");
         });
     }
 

@@ -20,8 +20,7 @@ import javafx.scene.image.WritableImage;
  * colours are supported via {@code NSStatusBarButton.attributedTitle} but the
  * icon itself should still be square and no taller than 22 px (1×).
  * Providing a non-square or oversized image causes AppKit to scale it down,
- * often with visible quality loss. You can also set a maxWidth parameter on MacOS
- * which will limit the icon width to 178px.
+ * often with visible quality loss.
  *
  * <h3>Windows</h3>
  * The notification area (system tray) uses icons whose size tracks the DPI

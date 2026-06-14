@@ -49,4 +49,6 @@ public interface TrayIcon {
 
     Consumer<TrayEvent> getOnRightClick();
     void setOnRightClick(Consumer<TrayEvent> handler);
+
+    void showNotification(String title, String message);
 }

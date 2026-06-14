@@ -99,6 +99,12 @@ public final class DbusMenuExport implements DbusMenuInterface, Introspectable {
                 if (item.isSeparator()) {
                     props.put("type",    new Variant<>("separator"));
                     props.put("enabled", new Variant<>(Boolean.FALSE));
+                } else if (item.isCheckItem()) {
+                    props.put("label",        new Variant<>(item.getLabel()));
+                    props.put("enabled",      new Variant<>(item.isEnabled()));
+                    props.put("visible",      new Variant<>(Boolean.TRUE));
+                    props.put("toggle-type",  new Variant<>("checkmark"));
+                    props.put("toggle-state", new Variant<>(item.isChecked() ? 1 : 0));
                 } else {
                     props.put("label",   new Variant<>(item.getLabel()));
                     props.put("enabled", new Variant<>(item.isEnabled()));

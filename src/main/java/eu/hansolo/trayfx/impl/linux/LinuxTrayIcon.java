@@ -137,14 +137,27 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
 
         @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyMenu); }
 
+        @Override protected void nativeShowNotification(final String title, final String message) {
+            offThread(() -> {
+                final java.awt.TrayIcon t = awtTrayIcon;
+                if (t != null) { t.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO); }
+            });
+        }
+
         private void applyMenu() {
             final java.awt.TrayIcon trayIcon = awtTrayIcon; if (trayIcon == null) { return; }
             final TrayMenu          trayMenu = getMenu();
             if (trayMenu == null || trayMenu.isEmpty()) { trayIcon.setPopupMenu(null); return; }
             final PopupMenu popup = new PopupMenu();
             for (final eu.hansolo.trayfx.menu.MenuItem item : trayMenu.getItems()) {
-                if (item.isSeparator()) { popup.addSeparator(); }
-                else {
+                if (item.isSeparator()) {
+                    popup.addSeparator();
+                } else if (item.isCheckItem()) {
+                    final java.awt.CheckboxMenuItem chk = new java.awt.CheckboxMenuItem(item.getLabel(), item.isChecked());
+                    chk.setEnabled(item.isEnabled());
+                    chk.addItemListener(e -> Platform.runLater(item::fire));
+                    popup.add(chk);
+                } else {
                     final java.awt.MenuItem ai = new java.awt.MenuItem(item.getLabel());
                     ai.setEnabled(item.isEnabled());
                     ai.addActionListener(e -> Platform.runLater(item::fire));
@@ -161,6 +174,11 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
             trayMenu.getItems().forEach(item -> {
                 if (item.isSeparator()) {
                     popup.addSeparator();
+                } else if (item.isCheckItem()) {
+                    final java.awt.CheckboxMenuItem chk = new java.awt.CheckboxMenuItem(item.getLabel(), item.isChecked());
+                    chk.setEnabled(item.isEnabled());
+                    chk.addItemListener(ev -> Platform.runLater(item::fire));
+                    popup.add(chk);
                 } else {
                     final MenuItem ai = new MenuItem(item.getLabel());
                     ai.setEnabled(item.isEnabled());

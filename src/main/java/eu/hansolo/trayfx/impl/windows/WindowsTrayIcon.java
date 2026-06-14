@@ -63,21 +63,33 @@ public final class WindowsTrayIcon extends AbstractTrayIcon {
 
     @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyAwtMenu); }
 
+    @Override protected void nativeShowNotification(final String title, final String message) {
+        offThread(() -> {
+            final java.awt.TrayIcon t = awtTrayIcon;
+            if (t != null) { t.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO); }
+        });
+    }
+
 
     private void applyAwtMenu() {
         final java.awt.TrayIcon t = awtTrayIcon;
         if (t == null) { return; }
 
-        final TrayMenu menu = getMenu();
-        if (menu == null || menu.isEmpty()) {
+        final TrayMenu trayMenu = getMenu();
+        if (trayMenu == null || trayMenu.isEmpty()) {
             t.setPopupMenu(null);
             return;
         }
 
         final java.awt.PopupMenu popup = new java.awt.PopupMenu();
-        menu.getItems().forEach(item -> {
+        trayMenu.getItems().forEach(item -> {
             if (item.isSeparator()) {
                 popup.addSeparator();
+            } else if (item.isCheckItem()) {
+                final java.awt.CheckboxMenuItem chk = new java.awt.CheckboxMenuItem(item.getLabel(), item.isChecked());
+                chk.setEnabled(item.isEnabled());
+                chk.addItemListener(e -> Platform.runLater(item::fire));
+                popup.add(chk);
             } else {
                 final MenuItem awtItem = new MenuItem(item.getLabel());
                 awtItem.setEnabled(item.isEnabled());

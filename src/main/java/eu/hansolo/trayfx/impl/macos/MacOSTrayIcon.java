@@ -75,6 +75,81 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
 
     @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyAwtMenu); }
 
+    @Override protected void nativeShowNotification(final String title, final String message) {
+        offThread(() -> {
+            if (!tryNotifierApp(title, message)) {
+                tryOsascript(title, message);
+            }
+        });
+    }
+
+    private boolean tryNotifierApp(final String title, final String message) {
+        try {
+            final java.net.URL helperUrl = MacOSTrayIcon.class.getResource(
+            "/eu/hansolo/trayfx/macos/TrayFXNotifier.app/Contents/MacOS/TrayFXNotifier");
+
+            System.out.println("[TrayFX] helper found: " + (helperUrl != null));
+
+            if (helperUrl == null) { return false; }
+
+            final String helperPath = new java.io.File(helperUrl.toURI()).getAbsolutePath();
+            if (!new java.io.File(helperPath).canExecute()) { return false; }
+
+            final java.util.List<String> cmd = new java.util.ArrayList<>();
+            cmd.add(helperPath);
+            cmd.add("--title");   cmd.add(title   != null ? title   : "");
+            cmd.add("--message"); cmd.add(message != null ? message : "");
+
+            final Image currentIcon = getIcon();
+            if (currentIcon != null) {
+                final java.io.File tmp = writeIconToTemp(currentIcon);
+                if (tmp != null) {
+                    cmd.add("--icon");
+                    cmd.add(tmp.getAbsolutePath());
+                    tmp.deleteOnExit();
+                }
+            }
+
+            new ProcessBuilder(cmd).redirectErrorStream(true).start();
+            return true;
+        } catch (final Exception ignored) {
+            return false;
+        }
+    }
+
+    private boolean tryOsascript(final String title, final String message) {
+        try {
+            final String script = String.format(
+            "display notification %s with title %s",
+            quotedAppleScript(message),
+            quotedAppleScript(title)
+                                               );
+            new ProcessBuilder("osascript", "-e", script)
+            .redirectErrorStream(true)
+            .start();
+            return true;
+        } catch (final Exception ignored) {
+            return false;
+        }
+    }
+
+    private static java.io.File writeIconToTemp(final Image fxImage) {
+        try {
+            final java.io.File tmp = java.io.File.createTempFile("trayfx-icon-", ".png");
+            final BufferedImage buf = toBufferedImage(fxImage);
+            javax.imageio.ImageIO.write(buf, "png", tmp);
+            return tmp;
+        } catch (final Exception ignored) {
+            return null;
+        }
+    }
+
+    // Wraps a string for AppleScript and escapes backslashes and double quotes
+    private static String quotedAppleScript(final String s) {
+        if (s == null) { return "\"\""; }
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
 
     private void applyAwtMenu() {
         final java.awt.TrayIcon trayIcon = awtTrayIcon;
@@ -90,8 +165,17 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
         trayMenu.getItems().forEach(item -> {
             if (item.isSeparator()) {
                 popup.addSeparator();
+            } else if (item.isCheckItem()) {
+                // AWT CheckboxMenuItem for check items
+                final java.awt.CheckboxMenuItem chk = new java.awt.CheckboxMenuItem(item.getLabel(), item.isChecked());
+                chk.setEnabled(item.isEnabled());
+                chk.addItemListener(e -> Platform.runLater(item::fire));
+                popup.add(chk);
             } else {
-                final MenuItem awtItem = new MenuItem(item.getLabel());
+                // Regular item — prefix label with icon emoji if an icon image is set
+                // (AWT PopupMenu does not support image icons natively)
+                final String label = item.getLabel();
+                final MenuItem awtItem = new MenuItem(label);
                 awtItem.setEnabled(item.isEnabled());
                 awtItem.addActionListener(e -> Platform.runLater(item::fire));
                 popup.add(awtItem);
@@ -152,11 +236,7 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
                 // objc_msgSend for setLength: (double arg)
                 final MethodHandle msgSendDouble = linker.downcallHandle(
                     objc.find("objc_msgSend").orElseThrow(),
-                    FunctionDescriptor.ofVoid(
-                        ValueLayout.ADDRESS,  // self
-                        ValueLayout.ADDRESS,  // sel
-                        ValueLayout.JAVA_DOUBLE // length
-                    )
+                    FunctionDescriptor.ofVoid(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_DOUBLE)
                 );
 
                 // Get selector for setLength:

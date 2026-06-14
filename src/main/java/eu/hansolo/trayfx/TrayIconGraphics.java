@@ -7,7 +7,9 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Paint;
+import javafx.scene.paint.RadialGradient;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -41,10 +43,46 @@ import javafx.scene.text.TextAlignment;
 public final class TrayIconGraphics {
 
     public enum BackgroundShape {
-        NONE,        // No background, transparent, content only./**
+        NONE,        // No background, transparent, content only
         RECT,        // Full size rectangle
         CIRCLE,      // Circle based on icon boundaries
         ROUNDED_RECT // Full size rounded rectangle
+    }
+
+    /**
+     * Scales a JavaFX {@link Image} to the platform's preferred tray icon size
+     * using bicubic interpolation on a JavaFX Canvas, then returns the result.
+     * Use this to pass any image directly to {@link TrayIcon#setIcon(Image)}
+     * with guaranteed correct sizing and quality.
+     *
+     * <p>Must be called on the JavaFX Application Thread.
+     */
+    public static Image ofImage(final Image source) {
+        return ofImage(source, IconSpec.forCurrentPlatform().getPreferredWidth(),
+                               IconSpec.forCurrentPlatform().getPreferredHeight());
+    }
+
+    /**
+     * Scales a JavaFX {@link Image} to the given target dimensions using
+     * bicubic interpolation on a JavaFX Canvas.
+     *
+     * <p>Must be called on the JavaFX Application Thread.
+     */
+    public static Image ofImage(final Image source, final int targetWidth, final int targetHeight) {
+        if (source == null) { return null; }
+        final Canvas          canvas = new Canvas(targetWidth, targetHeight);
+        final GraphicsContext ctx    = canvas.getGraphicsContext2D();
+        ctx.clearRect(0, 0, targetWidth, targetHeight);
+        // drawImage uses JavaFX's bicubic interpolation when scaling
+        ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+        final WritableImage      snapshot = new WritableImage(targetWidth, targetHeight);
+        final int[]              clear    = new int[targetWidth * targetHeight];
+        snapshot.getPixelWriter().setPixels(0, 0, targetWidth, targetHeight,
+            javafx.scene.image.PixelFormat.getIntArgbInstance(), clear, 0, targetWidth);
+        final SnapshotParameters params = new SnapshotParameters();
+        params.setFill(Color.TRANSPARENT);
+        canvas.snapshot(params, snapshot);
+        return snapshot;
     }
 
     private String          text;
@@ -91,6 +129,25 @@ public final class TrayIconGraphics {
     // Shorthand for {@link #backgroundColor} + {@link #backgroundShape}.
     public TrayIconGraphics background(final Paint color, final BackgroundShape shape) {
         this.backgroundColor = color;
+        this.backgroundShape = shape;
+        return this;
+    }
+
+    /**
+     * Shorthand for setting a linear gradient background.
+     * Example: {@code .backgroundGradient(LinearGradient.valueOf("from 0% 0% to 0% 100%, #2e7d32, #66bb6a"), BackgroundShape.ROUNDED_RECT)}
+     */
+    public TrayIconGraphics backgroundGradient(final LinearGradient gradient, final BackgroundShape shape) {
+        this.backgroundColor = gradient;
+        this.backgroundShape = shape;
+        return this;
+    }
+
+    /**
+     * Shorthand for setting a radial gradient background.
+     */
+    public TrayIconGraphics backgroundGradient(final RadialGradient gradient, final BackgroundShape shape) {
+        this.backgroundColor = gradient;
         this.backgroundShape = shape;
         return this;
     }
@@ -187,7 +244,10 @@ public final class TrayIconGraphics {
         final int    canvasWidth;
         if (canExpand && text != null && !text.isEmpty()) {
             final double   measured  = measureTextWidth(text, resolveFont(height, shapeHeight, Double.MAX_VALUE));
+            // Use at least 1.5x the height so short text (e.g. "LO", "5.4") still
+            // produces a wide pill shape rather than a near-square
             final double   uncapped  = Math.max(shapeHeight * 1.5, measured + textPad * 2);
+            // Apply cap: user-supplied maxWidth takes priority, then platform default
             final IconSpec spec      = IconSpec.forCurrentPlatform();
             final int      capPixels = maxWidth > 0 ? maxWidth : spec.getMaxShapeWidth();
             shapeWidth  = capPixels > 0 ? Math.min(uncapped, capPixels - inset * 2) : uncapped;
