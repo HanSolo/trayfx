@@ -104,8 +104,9 @@ public abstract class AbstractTrayIcon implements TrayIcon {
 
     // ********** Events ******************************************************
     @Override public Consumer<TrayEvent> getOnLeftClick() { return onLeftClick;  }
-    @Override public Consumer<TrayEvent> getOnRightClick() { return onRightClick; }
     @Override public void setOnLeftClick(final Consumer<TrayEvent> consumer)  { onLeftClick  = consumer; }
+
+    @Override public Consumer<TrayEvent> getOnRightClick() { return onRightClick; }
     @Override public void setOnRightClick(final Consumer<TrayEvent> consumer) { onRightClick = consumer; }
 
     protected void fireLeftClick() {

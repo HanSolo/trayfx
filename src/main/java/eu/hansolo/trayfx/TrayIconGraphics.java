@@ -176,12 +176,6 @@ public final class TrayIconGraphics {
 
     /**
      * Sets the background shape size as a <em>fraction of the icon size</em>.
-     * {@code 1.0} fills the entire icon (edge to edge). {@code 0.9} leaves a
-     * 5% gap on each side. {@code 0.5} makes the shape half the icon size,
-     * centered.
-     *
-     * <p>This overrides any previous {@link #shapeInset(double)} call and vice versa, the last one set wins.
-     *
      * <p>Default: {@code 1.0} (full size).
      */
     public TrayIconGraphics shapeSize(final double fraction) {
@@ -192,14 +186,6 @@ public final class TrayIconGraphics {
 
     /**
      * Sets the gap between the icon edge and the background shape in pixels.
-     * {@code 0} (default) means the shape fills the full icon.
-     * {@code 1} leaves a 1 px gap all around. {@code 2} leaves 2 px, etc.
-     *
-     * <p>This is often the most intuitive way to control shape size when
-     * you want a specific pixel gap rather than a proportional one.
-     *
-     * <p>This overrides any previous {@link #shapeSize(double)} call and
-     * vice versa — the last one set wins.
      */
     public TrayIconGraphics shapeInset(final double pixels) {
         this.shapeInset = Math.max(0, pixels);
@@ -244,10 +230,7 @@ public final class TrayIconGraphics {
         final int    canvasWidth;
         if (canExpand && text != null && !text.isEmpty()) {
             final double   measured  = measureTextWidth(text, resolveFont(height, shapeHeight, Double.MAX_VALUE));
-            // Use at least 1.5x the height so short text (e.g. "LO", "5.4") still
-            // produces a wide pill shape rather than a near-square
             final double   uncapped  = Math.max(shapeHeight * 1.5, measured + textPad * 2);
-            // Apply cap: user-supplied maxWidth takes priority, then platform default
             final IconSpec spec      = IconSpec.forCurrentPlatform();
             final int      capPixels = maxWidth > 0 ? maxWidth : spec.getMaxShapeWidth();
             shapeWidth  = capPixels > 0 ? Math.min(uncapped, capPixels - inset * 2) : uncapped;

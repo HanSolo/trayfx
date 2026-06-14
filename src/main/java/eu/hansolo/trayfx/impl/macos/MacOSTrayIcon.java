@@ -24,9 +24,8 @@ import java.lang.invoke.MethodHandle;
  * horizontally to fit the image width.
  *
  * <h2>Threading</h2>
- * SystemTray.add/remove must never be called from the JavaFX Application Thread
- * on macOS — doing so deadlocks because AWT internally dispatches to the Cocoa
- * main thread which is already occupied.
+ * SystemTray.add/remove must never be called from the JavaFX Application Thread on macOS,
+ * doing so deadlocks because AWT internally dispatches to the Cocoa main thread which is already occupied.
  */
 public final class MacOSTrayIcon extends AbstractTrayIcon {
 
@@ -88,8 +87,6 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
             final java.net.URL helperUrl = MacOSTrayIcon.class.getResource(
             "/eu/hansolo/trayfx/macos/TrayFXNotifier.app/Contents/MacOS/TrayFXNotifier");
 
-            System.out.println("[TrayFX] helper found: " + (helperUrl != null));
-
             if (helperUrl == null) { return false; }
 
             final String helperPath = new java.io.File(helperUrl.toURI()).getAbsolutePath();
@@ -97,8 +94,10 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
 
             final java.util.List<String> cmd = new java.util.ArrayList<>();
             cmd.add(helperPath);
-            cmd.add("--title");   cmd.add(title   != null ? title   : "");
-            cmd.add("--message"); cmd.add(message != null ? message : "");
+            cmd.add("--title");
+            cmd.add(title   != null ? title   : "");
+            cmd.add("--message");
+            cmd.add(message != null ? message : "");
 
             final Image currentIcon = getIcon();
             if (currentIcon != null) {
@@ -119,14 +118,8 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
 
     private boolean tryOsascript(final String title, final String message) {
         try {
-            final String script = String.format(
-            "display notification %s with title %s",
-            quotedAppleScript(message),
-            quotedAppleScript(title)
-                                               );
-            new ProcessBuilder("osascript", "-e", script)
-            .redirectErrorStream(true)
-            .start();
+            final String script = String.format("display notification %s with title %s", quotedAppleScript(message), quotedAppleScript(title));
+            new ProcessBuilder("osascript", "-e", script).redirectErrorStream(true).start();
             return true;
         } catch (final Exception ignored) {
             return false;

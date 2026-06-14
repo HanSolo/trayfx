@@ -19,70 +19,154 @@ TrayIcon tray = TrayFX.trayIcon()
                       .install();
 ```
 
-`install()` is safe to call from any thread. The icon appears asynchronously.
-Any call to `setIcon`, `setText` or `setMenu` made before the native icon is
-ready are queued and applied in order automatically.
+`install()` is safe to call from any thread. Any subsequent calls to
+`setIcon`, `setText`, `setMenu` etc. are also thread-safe — updates that
+arrive before the native icon is ready are queued and applied in order
+automatically.
 
 ---
 
-## Dynamic icon with TrayIconGraphics
+## TrayIconGraphics
 
-`TrayIconGraphics` renders a tray icon image from declarative properties as text, colors, background shape, without touching a `Canvas` directly:
+Renders a tray icon image from declarative properties — text, colors,
+background shape — without touching a `Canvas` directly:
 
 ```java
-// Blood glucose badge with color coded rounded rectangle
+// Blood glucose badge — color-coded rounded rectangle, auto-width
 Image icon = TrayIconGraphics.create()
-                             .text("5.4")
+    .text("94 ↓↓")
                              .textColor(Color.WHITE)
-                             .background(Color.MEDIUMSEAGREEN, BackgroundShape.ROUNDED_RECT)
-                             .shapeInset(1)       // 1 px gap all around
+    .background(Color.web("#2e7d32"), BackgroundShape.ROUNDED_RECT)
+    .shapeInset(1)
                              .cornerRadius(0.40)
                              .build();
 
 tray.setIcon(icon);      // safe from any thread
 ```
 
-Background shapes: `ROUNDED_RECT`, `CIRCLE`, `RECT`, `NONE`.
-Font is auto-sized to fit, supply your own via `.font(Font)` if needed.
+### Background shapes
+`ROUNDED_RECT`, `CIRCLE`, `RECT`, `NONE`
+
+### Variable width
+For `ROUNDED_RECT` and `RECT` the canvas width expands automatically to
+fit the text content. The height stays fixed at the platform's preferred
+icon height. On macOS the width is capped at 178px (89 logical points @2×).
+
+### Gradients
+```java
+final LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true,
+    CycleMethod.NO_CYCLE,
+    new Stop(0.0, Color.web("#1565C0")),
+    new Stop(1.0, Color.web("#42A5F5")));
+
+TrayIconGraphics.create()
+    .text("FX")
+    .textColor(Color.WHITE)
+    .backgroundGradient(gradient, BackgroundShape.ROUNDED_RECT)
+    .build();
+```
+
+### Scale any image to platform size
+```java
+// Scales to the platform's preferred tray icon size with bicubic interpolation
+tray.setIcon(TrayIconGraphics.ofImage(myImage));
+
+// Or explicit target size
+tray.setIcon(TrayIconGraphics.ofImage(myImage, 44, 44));
+```
+
+---
+
+## Menu
+
+```java
+TrayMenu menu = TrayMenu.builder()
+    .item(MenuItem.of("Show window",  () -> stage.show()))
+    .item(MenuItem.of("Hide window",  () -> stage.hide()))
+    .separator()
+    // Check item — toggles on click, fires consumer with new state
+    .item(MenuItem.checkItem("Show notifications", true, checked -> {}))
+    .separator()
+    .item(MenuItem.of("Quit", javafx.application.Platform::exit))
+    .build();
+```
+
+### Runtime enable/disable
+```java
+final MenuItem item = MenuItem.of("Upload", this::upload);
+item.setEnabled(false);   // disable at runtime
+// ...
+item.setEnabled(true);    // re-enable
+tray.setMenu(tray.getMenu()); // push the update to the native menu
+```
+
+### Menu items with icon
+```java
+MenuItem.of("Open", myIconImage, () -> stage.show())
+```
+Note: AWT `PopupMenu` does not render icon images natively on all platforms.
+The icon field is available for use in custom menu implementations.
+
+---
+
+## Notifications
+
+```java
+tray.showNotification("TrayFX", "Blood glucose is low!");
+```
+
+| Platform | Backend | Custom icon |
+|---|---|---|
+| macOS | `TrayFXNotifier.app` helper (if bundled) → falls back to `osascript` | ✅ as attachment |
+| Windows | AWT `displayMessage()` balloon tip | ❌ |
+| Linux | AWT `displayMessage()` passive popup | ❌ |
+
+### macOS — TrayFXNotifier helper
+For macOS notifications with custom icon support, build and bundle the
+included Swift helper app:
+
+1. Open `helper/TrayFXNotifier` in Xcode
+2. Set bundle ID to `eu.hansolo.trayfx.notifier`
+3. Build and sign with your Developer ID
+4. Place `TrayFXNotifier.app` at:
+   `src/main/resources/eu/hansolo/trayfx/macos/TrayFXNotifier.app`
+
+Without the helper, `showNotification` falls back to `osascript` which
+works without any setup but shows a generic icon in the notification header.
+
+**Known limitation:** the notification header icon (top-left of the
+notification) is blank for non-App-Store apps on macOS regardless of
+signing — this is a macOS restriction. The tray icon is shown correctly
+as an attachment thumbnail on the right side of the notification.
 
 ---
 
 ## Platform support
 
-| Platform | Backend                              | Transparency |
-|----------|--------------------------------------|--------------|
-| macOS    | `java.awt.SystemTray`                | ✅            |
-| Windows  | `java.awt.SystemTray`                | ✅            |
-| Linux    | D-Bus `StatusNotifierItem` (primary) | ✅            |
-| Linux    | `java.awt.SystemTray` (fallback)     | ⚠️ limited   |
+| Platform | Backend | Transparent icon | Variable width |
+|---|---|---|---|
+| macOS | `java.awt.SystemTray` + FFM `NSStatusItem` | ✅ | ✅ max 178px |
+| Windows | `java.awt.SystemTray` | ✅ | ✅ |
+| Linux | D-Bus `StatusNotifierItem` (primary) | ✅ | ✅ |
+| Linux | `java.awt.SystemTray` (fallback) | ⚠️ limited | ❌ |
 
 ### macOS
-Uses `java.awt.SystemTray`. `apple.awt.UIElement=true` is set automatically
-so the icon appears in the menu bar without a Dock entry. All AWT calls are
-dispatched on a background thread to avoid deadlocking with the JavaFX
-Application Thread.
+Uses `java.awt.SystemTray`. `apple.awt.UIElement=true` is set automatically.
+FFM is used to call `setLength:NSVariableStatusItemLength` on the underlying
+`NSStatusItem` so wide icons (glucose badges etc.) display correctly.
 
 ### Windows
-Uses `java.awt.SystemTray` mapping to the Windows notification area via the
-Shell notification icon API.
+Uses `java.awt.SystemTray` mapping to the Windows notification area.
 
 ### Linux
-Attempts to use the `org.kde.StatusNotifierItem` D-Bus protocol (via
-`dbus-java`) which provides full ARGB32 transparency and native menu
-rendering via `com.canonical.dbusmenu`. This is the protocol used by all
-modern Linux desktop environments (GNOME with AppIndicator extension,
-KDE Plasma, XFCE, etc.).
-
-Falls back to `java.awt.SystemTray` (XEmbed) if `dbus-java` is not on the
-classpath or the D-Bus session bus is unavailable. The AWT fallback has
-limited transparency support due to a GTK/XEmbed limitation.
-
-**GNOME Shell requirement:** the `ubuntu-appindicators` extension must be
-installed and enabled for the icon to appear in GNOME Shell:
+Primary backend: `org.kde.StatusNotifierItem` D-Bus protocol via
+`dbus-java`. Provides correct ARGB32 transparency and native menu rendering.
+Requires GNOME Shell with the AppIndicator extension:
 ```bash
 sudo apt install gnome-shell-extension-appindicator
 gnome-extensions enable ubuntu-appindicators@ubuntu.com
 ```
+Falls back to `java.awt.SystemTray` (XEmbed) if D-Bus is unavailable.
 
 ---
 
@@ -90,13 +174,9 @@ gnome-extensions enable ubuntu-appindicators@ubuntu.com
 
 - JDK 25+
 - JavaFX 26+
-- macOS  : no extra setup, `apple.awt.UIElement` is handled automatically
+- macOS: no extra setup
 - Windows: no extra setup
-- Linux (D-Bus backend): `dbus-java-core` + `dbus-java-transport-junixsocket`
-  are included automatically by the Gradle build on Linux; requires a running
-  D-Bus session bus and a compatible tray host
-- Linux (AWT fallback): requires a desktop environment with XEmbed system
-  tray support; some Wayland compositors may need XWayland
+- Linux: D-Bus session bus + AppIndicator extension for primary backend
 
 ---
 
@@ -118,55 +198,59 @@ gnome-extensions enable ubuntu-appindicators@ubuntu.com
 
 ```
 eu.hansolo.trayfx
-├── TrayFX                  Entry point (fluent builder)
-├── TrayIcon                Public interface (handle returned by install())
-├── TrayIconGraphics        Renders text+shape icons without touching Canvas
-├── AbstractTrayIcon        Base class (pending-update queue, thread safety)
+├── TrayFX                  Entry point — fluent builder
+├── TrayIcon                Public interface
+├── TrayIconGraphics        Renders text+shape+gradient icons
+├── AbstractTrayIcon        Base class — pending-update queue, thread safety
 ├── IconSpec                Platform icon size constraints
 ├── Platform                OS detection
-├── ScalePolicy             Icon scaling behaviour enum
+├── ScalePolicy             Icon scaling behaviour
 ├── event/
 │   ├── TrayEvent           Fired on left/right click
 │   └── TrayEventType       LEFT_CLICK, RIGHT_CLICK
 ├── menu/
-│   ├── MenuItem            Label + Runnable + separator support
+│   ├── MenuItem            Regular, CheckItem, and Separator items
 │   └── TrayMenu            Ordered list of MenuItems, fluent builder
 ├── impl/macos/
-│   └── MacOSTrayIcon       AWT SystemTray implementation
+│   └── MacOSTrayIcon       AWT + FFM NSStatusItem variable length
 ├── impl/windows/
-│   └── WindowsTrayIcon     AWT SystemTray implementation
+│   └── WindowsTrayIcon     AWT SystemTray
 ├── impl/linux/
-│   ├── LinuxTrayIcon       Delegates to D-Bus impl or AWT fallback
-│   ├── LinuxDbusImpl       D-Bus StatusNotifierItem backend
-│   ├── StatusNotifierItemExport    org.kde.StatusNotifierItem object
-│   ├── StatusNotifierItemInterface D-Bus interface definition
-│   ├── StatusNotifierWatcherInterface  Watcher proxy
-│   ├── DbusMenuExport      com.canonical.dbusmenu object
-│   ├── DbusMenuInterface   D-Bus interface definition
-│   ├── MenuLayoutItem      Struct for GetLayout tree nodes (ia{sv}av)
-│   ├── GetLayoutResult     Tuple return type for GetLayout (u(ia{sv}av))
+│   ├── LinuxTrayIcon       D-Bus primary / AWT fallback
+│   ├── LinuxDbusImpl       StatusNotifierItem D-Bus backend
+│   ├── StatusNotifierItemExport
+│   ├── StatusNotifierItemInterface
+│   ├── StatusNotifierWatcherInterface
+│   ├── DbusMenuExport      com.canonical.dbusmenu implementation
+│   ├── DbusMenuInterface
+│   ├── MenuLayoutItem      Struct for GetLayout (ia{sv}av)
+│   ├── GetLayoutResult     Tuple return for GetLayout (u(ia{sv}av))
 │   └── GetGroupPropertiesResult  Struct for GetGroupProperties (ia{sv})
 └── example/
-    └── TrayFXExample       Clock + glucose badge demo
+    └── TrayFXExample       Clock + glucose + gradient + notification demo
+
+helper/
+└── TrayFXNotifier/         Swift helper app for macOS notifications
+    ├── Package.swift
+    └── Sources/TrayFXNotifier/
+        ├── main.swift
+        └── Info.plist
 ```
 
 ---
 
 ## dbus-java type system notes
 
-Getting `GetLayout` to return the correct D-Bus type `(u(ia{sv}av))` from
-dbus-java 5.x requires specific patterns that are not obvious from the docs:
+Key patterns required for correct D-Bus marshalling in dbus-java 5.x:
 
 - `GetLayoutResult` must extend `Tuple` with **unbounded** generic parameters
-  (`<A, B>`) — bounded generics cause `ClassCastException`, non-generic
-  `Tuple` subclasses produce empty `()` return
-- `Struct` subclasses (`MenuLayoutItem`, `GetGroupPropertiesResult`) must use
-  **private** fields with `@Position` annotations for correct serialisation
-  order — public fields may be enumerated in wrong order by the JVM
+  `<A, B>` — bounded generics cause `ClassCastException`, non-generic `Tuple`
+  produces empty `()` return
+- Struct subclasses (`MenuLayoutItem`, `GetGroupPropertiesResult`) must use
+  **private** fields with `@Position` annotations
 - `GetGroupProperties` must return `List<Struct>` giving D-Bus type `a(ia{sv})`
-- The `Menu` property in `StatusNotifierItem` must use D-Bus type `o`
-  (object path) not `s` (string) — AppIndicator uses the type to connect
-  to the menu object
+- The `Menu` property must use D-Bus type `o` (object path) not `s` (string)
+- Object paths must use Ayatana format `/org/ayatana/NotificationItem/name`
 
 ---
 

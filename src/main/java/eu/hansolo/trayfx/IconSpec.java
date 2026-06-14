@@ -109,37 +109,16 @@ public final class IconSpec {
     public int getPreferredWidth()  { return maxWidth;  }
     public int getPreferredHeight() { return maxHeight; }
 
-
-    /**
-     * Returns {@code true} if {@code image} fits within this spec's
-     * maximum dimensions without any scaling needed.
-     *
-     * @throws IllegalArgumentException if {@code image} is null
-     */
     public boolean isSuitable(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         return (int) image.getWidth()  <= maxWidth && (int) image.getHeight() <= maxHeight;
     }
 
-
-    // Returns {@code true} if {@code image} meets the minimum size requirement (i.e. will not be blurry due to upscaling).
     public boolean isLargeEnough(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         return (int) image.getWidth()  >= minWidth && (int) image.getHeight() >= minHeight;
     }
 
-    /**
-     * Returns {@code image} unchanged if it already fits this spec, otherwise
-     * returns a rescaled copy that fits within the maximum dimensions while
-     * honouring the spec's {@link ScalePolicy}.
-     *
-     * <p>The scaling is performed in Java (nearest-neighbour for speed);
-     * for production use you may want to apply a higher-quality filter before
-     * handing the image to the library.
-     *
-     * @param image the source image; must not be {@code null}
-     * @return a possibly new {@link Image} that fits this spec
-     */
     public Image fit(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         if (scalePolicy == ScalePolicy.NONE || isSuitable(image)) { return image; }
@@ -160,7 +139,6 @@ public final class IconSpec {
         return scale(image, sourceWidth, sourceHeight, destinationWidth, destinationHeight);
     }
 
-    // Like {@link #fit(Image)}, but scales to exactly the preferred (maximum) dimensions, stretching if necessary
     public Image fitExact(final Image image) {
         if (image == null) { throw new IllegalArgumentException("image must not be null"); }
         final int sourceWidth  = (int) image.getWidth();

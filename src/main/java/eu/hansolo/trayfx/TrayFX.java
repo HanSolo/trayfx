@@ -43,11 +43,6 @@ import java.util.function.Consumer;
  */
 public final class TrayFX {
 
-    // Static init: set apple.awt.UIElement before AWT touches anything.
-    // Must happen before the first SystemTray call on macOS or the
-    // window server will refuse to display the icon.
-    // Note: we use the OS name directly here to avoid any class-loading
-    // circularity — Platform.current() is fine but keeping this simple.
     static {
         final String os = System.getProperty("os.name", "").toLowerCase();
         if (os.contains("mac") || os.contains("darwin")) {
