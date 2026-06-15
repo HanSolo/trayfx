@@ -34,10 +34,10 @@ background shape — without touching a `Canvas` directly:
 ```java
 // Blood glucose badge — color-coded rounded rectangle, auto-width
 Image icon = TrayIconGraphics.create()
-    .text("94 ↓↓")
+                             .text("94 ↓↓")
                              .textColor(Color.WHITE)
-    .background(Color.web("#2e7d32"), BackgroundShape.ROUNDED_RECT)
-    .shapeInset(1)
+                             .background(Color.web("#2e7d32"), BackgroundShape.ROUNDED_RECT)
+                             .shapeInset(1)
                              .cornerRadius(0.40)
                              .build();
 
@@ -60,10 +60,10 @@ final LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true,
     new Stop(1.0, Color.web("#42A5F5")));
 
 TrayIconGraphics.create()
-    .text("FX")
-    .textColor(Color.WHITE)
-    .backgroundGradient(gradient, BackgroundShape.ROUNDED_RECT)
-    .build();
+                .text("FX")
+                .textColor(Color.WHITE)
+                .backgroundGradient(gradient, BackgroundShape.ROUNDED_RECT)
+                .build();
 ```
 
 ### Scale any image to platform size
@@ -81,14 +81,14 @@ tray.setIcon(TrayIconGraphics.ofImage(myImage, 44, 44));
 
 ```java
 TrayMenu menu = TrayMenu.builder()
-    .item(MenuItem.of("Show window",  () -> stage.show()))
-    .item(MenuItem.of("Hide window",  () -> stage.hide()))
-    .separator()
-    // Check item — toggles on click, fires consumer with new state
-    .item(MenuItem.checkItem("Show notifications", true, checked -> {}))
-    .separator()
-    .item(MenuItem.of("Quit", javafx.application.Platform::exit))
-    .build();
+                        .item(MenuItem.of("Show window",  () -> stage.show()))
+                        .item(MenuItem.of("Hide window",  () -> stage.hide()))
+                        .separator()
+                        // Check item — toggles on click, fires consumer with new state
+                        .item(MenuItem.checkItem("Show notifications", true, checked -> {}))
+                        .separator()
+                        .item(MenuItem.of("Quit", javafx.application.Platform::exit))
+                        .build();
 ```
 
 ### Runtime enable/disable
