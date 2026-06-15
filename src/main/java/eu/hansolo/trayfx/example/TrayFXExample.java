@@ -37,14 +37,12 @@ import java.util.concurrent.TimeUnit;
 
 
 public class TrayFXExample extends Application {
-
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     private TrayIcon                 tray;
     private ScheduledExecutorService scheduler;
     private Stage                    stage;
     private Label                    statusLabel;
-
 
 
     @Override public void start(final Stage stage) {
@@ -71,30 +69,33 @@ public class TrayFXExample extends Application {
         // Check item — tracks its own state
         final MenuItem notifyItem  = MenuItem.checkItem("Show notifications", true, checked -> {});
 
-        tray = TrayFX.trayIcon().icon(buildClockIcon(LocalTime.now()))
-                                .text(LocalTime.now().format(TIME_FMT))
-                                .textColor(Color.DODGERBLUE)
-                                .menu(TrayMenu.builder().item(MenuItem.of("Show window",  () -> Platform.runLater(this::showWindow)))
-                                                        .item(MenuItem.of("Hide window",  () -> Platform.runLater(this::hideWindow)))
-                                                        .separator()
-                                                        .item(MenuItem.of("Clock icon",   () -> setClockIcon(Color.DODGERBLUE)))
-                                                        .item(MenuItem.of("Gradient icon",() -> setGradientIcon()))
-                                                        .separator()
-                                                        .item(MenuItem.of("Normal 155 ↓↓", () -> setGlucose("155 ↓↓", Color.MEDIUMSEAGREEN)))
-                                                        .item(MenuItem.of("Low    (3.2)", () -> setGlucose("LO",  Color.TOMATO)))
-                                                        .item(MenuItem.of("High   (14)",  () -> setGlucose("HI",  Color.ORANGE)))
-                                                        .separator()
-                                                        .item(notifyItem)
-                                                        .item(MenuItem.of("Send notification", () -> {
-                                                            if (notifyItem.isChecked()) {
-                                                                tray.showNotification("TrayFX", "Hello from TrayFX! 🎉");
-                                                            }
-                                                        }))
-                                                        .separator()
-                                                        .item(MenuItem.of("Quit",         () -> Platform.runLater(this::quit)))
-                                                        .build())
-                                .onLeftClick(e -> Platform.runLater(this::toggleWindow))
-                                .install();
+        tray = TrayFX.trayIcon()
+                     .appName("TrayFX")
+                     .icon(buildClockIcon(LocalTime.now()))
+                     .text(LocalTime.now().format(TIME_FMT))
+                     .textColor(Color.DODGERBLUE)
+                     .menu(TrayMenu.builder()
+                                   .item(MenuItem.of("Show window",  () -> Platform.runLater(this::showWindow)))
+                                   .item(MenuItem.of("Hide window",  () -> Platform.runLater(this::hideWindow)))
+                                   .separator()
+                                   .item(MenuItem.of("Clock icon",   () -> setClockIcon(Color.DODGERBLUE)))
+                                   .item(MenuItem.of("Gradient icon",() -> setGradientIcon()))
+                                   .separator()
+                                   .item(MenuItem.of("Normal 155 ↓↓", () -> setGlucose("155 ↓↓", Color.MEDIUMSEAGREEN)))
+                                   .item(MenuItem.of("Low    (3.2)", () -> setGlucose("LO",  Color.TOMATO)))
+                                   .item(MenuItem.of("High   (14)",  () -> setGlucose("HI",  Color.ORANGE)))
+                                   .separator()
+                                   .item(notifyItem)
+                                   .item(MenuItem.of("Send notification", () -> {
+                                       if (notifyItem.isChecked()) {
+                                           tray.showNotification("TrayFX", "Hello from TrayFX! 🎉");
+                                       }
+                                   }))
+                                   .separator()
+                                   .item(MenuItem.of("Quit",         () -> Platform.runLater(this::quit)))
+                                   .build())
+                     .onLeftClick(e -> Platform.runLater(this::toggleWindow))
+                     .install();
 
         // Tick every minute
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
