@@ -150,7 +150,12 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         @Override protected void nativeShowNotification(final String title, final String message) {
             offThread(() -> {
                 try {
-                    new ProcessBuilder("notify-send", "--app-name", "TrayFX", title != null ? title : "", message != null ? message : "").redirectErrorStream(true).start();
+                    new ProcessBuilder("notify-send",
+                        "--app-name", System.getProperty("trayfx.app.name", "TrayFX"),
+                        title != null ? title : "",
+                        message != null ? message : "")
+                        .redirectErrorStream(true)
+                        .start();
                 } catch (final Exception ignored) {}
             });
         }

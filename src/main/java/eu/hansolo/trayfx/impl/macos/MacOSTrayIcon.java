@@ -86,9 +86,7 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
 
     private boolean tryNotifierApp(final String title, final String message) {
         try {
-            final java.net.URL helperUrl = MacOSTrayIcon.class.getResource(
-            "/eu/hansolo/trayfx/macos/TrayFXNotifier.app/Contents/MacOS/TrayFXNotifier");
-
+            final java.net.URL helperUrl = MacOSTrayIcon.class.getResource("/eu/hansolo/trayfx/macos/TrayFXNotifier.app/Contents/MacOS/TrayFXNotifier");
             if (helperUrl == null) { return false; }
 
             final String helperPath = new java.io.File(helperUrl.toURI()).getAbsolutePath();

@@ -21,8 +21,8 @@ import javax.imageio.ImageIO;
  * is unavailable or the WinRT call fails.
  */
 final class WindowsToastNotifier {
-    private static final String APP_ID = "eu.hansolo.TrayFX";
 
+    private static String appId() { return System.getProperty("trayfx.app.name", "TrayFX"); }
 
     private WindowsToastNotifier() {}
 
@@ -63,7 +63,7 @@ final class WindowsToastNotifier {
                 "$xml = New-Object Windows.Data.Xml.Dom.XmlDocument",
                 "$xml.LoadXml('" + xml.toString().replace("'", "''") + "')",
                 "$toast = New-Object Windows.UI.Notifications.ToastNotification $xml",
-                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('" + APP_ID + "').Show($toast)"
+                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('" + appId() + "').Show($toast)"
             );
 
             final Process process = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps).redirectErrorStream(true).start();

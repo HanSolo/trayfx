@@ -78,6 +78,7 @@ public final class TrayFX {
         private TrayMenu             menu;
         private Consumer<TrayEvent>  onLeftClick;
         private Consumer<TrayEvent>  onRightClick;
+        private String               appName    = "TrayFX";
 
         private Builder() {}
 
@@ -106,6 +107,11 @@ public final class TrayFX {
             return this;
         }
 
+        public Builder appName(final String appName) {
+            this.appName = (appName != null && !appName.isBlank()) ? appName : "TrayFX";
+            return this;
+        }
+
         public Builder onRightClick(final Consumer<TrayEvent> handler) {
             this.onRightClick = handler;
             return this;
@@ -126,8 +132,8 @@ public final class TrayFX {
         public TrayIcon install() {
             if (!isSupported()) { throw new UnsupportedOperationException("TrayFX is not supported on: " + System.getProperty("os.name")); }
 
-            // Keep the app alive when the last window closes
-            javafx.application.Platform.setImplicitExit(false);
+            javafx.application.Platform.setImplicitExit(false); // Keep the app alive when the last window closes
+            System.setProperty("trayfx.app.name", appName);     // Store app name for notification backends
 
             final AbstractTrayIcon impl = createImpl();
             if (icon         != null) { impl.setIcon(icon); }

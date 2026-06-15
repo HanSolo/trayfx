@@ -107,13 +107,24 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
                     // Write icon to temp file and pass to notify-send
                     final java.io.File tmp = writeIconToTemp(currentIcon);
                     if (tmp != null) {
-                        new ProcessBuilder("notify-send", "--icon", tmp.getAbsolutePath(), "--app-name", "TrayFX", title != null ? title : "", message != null ? message : "").redirectErrorStream(true).start();
+                        new ProcessBuilder("notify-send",
+                            "--icon", tmp.getAbsolutePath(),
+                            "--app-name", System.getProperty("trayfx.app.name", "TrayFX"),
+                            title != null ? title : "",
+                            message != null ? message : "")
+                            .redirectErrorStream(true)
+                            .start();
                         tmp.deleteOnExit();
                         return;
                     }
                 }
                 // No icon — send without
-                new ProcessBuilder("notify-send", "--app-name", "TrayFX", title != null ? title : "", message != null ? message : "").redirectErrorStream(true).start();
+                new ProcessBuilder("notify-send",
+                    "--app-name", System.getProperty("trayfx.app.name", "TrayFX"),
+                    title != null ? title : "",
+                    message != null ? message : "")
+                    .redirectErrorStream(true)
+                    .start();
             } catch (final Exception ignored) {}
         });
     }
