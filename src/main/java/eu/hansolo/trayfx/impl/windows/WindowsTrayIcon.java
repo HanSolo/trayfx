@@ -68,7 +68,7 @@ public final class WindowsTrayIcon extends AbstractTrayIcon {
     @Override protected void nativeShowNotification(final String title, final String message) {
         offThread(() -> WindowsToastNotifier.show(title, message, getIcon(), awtTrayIcon));
     }
-    
+
     private void applyAwtMenu() {
         final java.awt.TrayIcon t = awtTrayIcon;
         if (t == null) { return; }

@@ -67,7 +67,7 @@ final class WindowsToastNotifier {
             // Fail fast if .NET runtime is not installed
             if (!isDotNetAvailable()) { return false; }
 
-            final java.net.URL helperUrl = WindowsToastNotifier.class.getResource("/eu/hansolo/trayfx/windows/TrayFXNotifier.exe");
+            final java.net.URL helperUrl = WindowsToastNotifier.class.getResource("/eu/hansolo/trayfx/windows/TrayFX.exe");
             if (helperUrl == null) { return false; }
 
             final String helperPath = new File(helperUrl.toURI()).getAbsolutePath();
