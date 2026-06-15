@@ -108,7 +108,7 @@ public final class TrayFX {
         }
 
         public Builder appName(final String appName) {
-            this.appName = (appName != null && !appName.isBlank()) ? appName : "TrayFX";
+            this.appName = appName != null ? appName : "TrayFX";
             return this;
         }
 
