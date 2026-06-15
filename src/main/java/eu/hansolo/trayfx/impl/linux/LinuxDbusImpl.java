@@ -126,18 +126,12 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
                 cmd.add(title   != null ? title   : "");
                 cmd.add(message != null ? message : "");
 
-                final Process p = new ProcessBuilder(cmd)
-                    .redirectErrorStream(true)
+                // Redirect stderr to null to avoid informational messages to clutter the console
+                new ProcessBuilder(cmd)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start();
-
-                // Read output to detect errors
-                final String output = new String(p.getInputStream().readAllBytes()).trim();
-                if (!output.isEmpty()) {
-                    System.err.println("[TrayFX] notify-send: " + output);
-                }
-            } catch (final Exception e) {
-                System.err.println("[TrayFX] notify-send failed: " + e.getMessage());
-            }
+            } catch (final Exception ignored) {}
         });
     }
 

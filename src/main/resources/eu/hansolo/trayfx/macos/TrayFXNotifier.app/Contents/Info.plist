@@ -6,6 +6,8 @@
 	<string>25F80</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>TrayFX</string>
 	<key>CFBundleExecutable</key>
 	<string>TrayFXNotifier</string>
 	<key>CFBundleIconFile</key>
@@ -44,7 +46,13 @@
 	<string>2650</string>
 	<key>DTXcodeBuild</key>
 	<string>17F42</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>26.5</string>
+	<string>26.0</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Gerrit Grunwald</string>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
+	<true/>
 </dict>
 </plist>
