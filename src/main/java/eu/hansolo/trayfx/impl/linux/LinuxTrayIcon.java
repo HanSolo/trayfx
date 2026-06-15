@@ -67,6 +67,11 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
         if (d != null) { d.setMenu(menu); }
     }
 
+    @Override protected void nativeShowNotification(final String title, final String message) {
+        final AbstractTrayIcon d = delegate;
+        if (d != null) { d.showNotification(title, message); }
+    }
+
     private static boolean isDbusAvailable() {
         try {
             Class.forName("org.freedesktop.dbus.connections.impl.DBusConnection");
