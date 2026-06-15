@@ -102,30 +102,42 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
     @Override protected void nativeShowNotification(final String title, final String message) {
         offThread(() -> {
             try {
-                final Image currentIcon = getIcon();
-                if (currentIcon != null) {
-                    // Write icon to temp file and pass to notify-send
-                    final java.io.File tmp = writeIconToTemp(currentIcon);
+                final String appName = System.getProperty("trayfx.app.name", "TrayFX");
+                final Image  icon    = getIcon();
+
+                final java.util.List<String> cmd = new java.util.ArrayList<>();
+                cmd.add("notify-send");
+                cmd.add("--app-name"); cmd.add(appName);
+                // Urgency normal ensures the notification appears
+                cmd.add("--urgency");  cmd.add("normal");
+                // Expire after 5 seconds
+                cmd.add("--expire-time"); cmd.add("5000");
+
+                if (icon != null) {
+                    final java.io.File tmp = writeIconToTemp(icon);
                     if (tmp != null) {
-                        new ProcessBuilder("notify-send",
-                            "--icon", tmp.getAbsolutePath(),
-                            "--app-name", System.getProperty("trayfx.app.name", "TrayFX"),
-                            title != null ? title : "",
-                            message != null ? message : "")
-                            .redirectErrorStream(true)
-                            .start();
+                        // Make the temp file world-readable so the notification daemon can access it
+                        tmp.setReadable(true, false);
+                        cmd.add("--icon"); cmd.add(tmp.getAbsolutePath());
                         tmp.deleteOnExit();
-                        return;
                     }
                 }
-                // No icon — send without
-                new ProcessBuilder("notify-send",
-                    "--app-name", System.getProperty("trayfx.app.name", "TrayFX"),
-                    title != null ? title : "",
-                    message != null ? message : "")
+
+                cmd.add(title   != null ? title   : "");
+                cmd.add(message != null ? message : "");
+
+                final Process p = new ProcessBuilder(cmd)
                     .redirectErrorStream(true)
                     .start();
-            } catch (final Exception ignored) {}
+
+                // Read output to detect errors
+                final String output = new String(p.getInputStream().readAllBytes()).trim();
+                if (!output.isEmpty()) {
+                    System.err.println("[TrayFX] notify-send: " + output);
+                }
+            } catch (final Exception e) {
+                System.err.println("[TrayFX] notify-send failed: " + e.getMessage());
+            }
         });
     }
 
