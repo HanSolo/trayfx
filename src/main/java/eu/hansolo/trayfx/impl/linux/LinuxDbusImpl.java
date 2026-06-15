@@ -15,7 +15,6 @@ import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder;
  * {@code build.gradle}). It is loaded reflectively by {@link LinuxTrayIcon}
  * so that {@code LinuxTrayIcon} itself compiles on all platforms without
  * importing dbus-java types.
- *
  * <p>Constructor takes the parent {@link LinuxTrayIcon} as argument so that
  * {@code onNativeReady()} can be called on the correct base instance.
  */
@@ -98,6 +97,41 @@ public final class LinuxDbusImpl extends AbstractTrayIcon {
             final StatusNotifierItemExport s = sniExport;
             if (s != null) { s.setMenu(menu); }
         });
+    }
+
+    @Override protected void nativeShowNotification(final String title, final String message) {
+        offThread(() -> {
+            try {
+                final Image currentIcon = getIcon();
+                if (currentIcon != null) {
+                    // Write icon to temp file and pass to notify-send
+                    final java.io.File tmp = writeIconToTemp(currentIcon);
+                    if (tmp != null) {
+                        new ProcessBuilder("notify-send", "--icon", tmp.getAbsolutePath(), "--app-name", "TrayFX", title != null ? title : "", message != null ? message : "").redirectErrorStream(true).start();
+                        tmp.deleteOnExit();
+                        return;
+                    }
+                }
+                // No icon — send without
+                new ProcessBuilder("notify-send", "--app-name", "TrayFX", title != null ? title : "", message != null ? message : "").redirectErrorStream(true).start();
+            } catch (final Exception ignored) {}
+        });
+    }
+
+    private static java.io.File writeIconToTemp(final Image fxImage) {
+        try {
+            final java.io.File                 tmpFile       = java.io.File.createTempFile("trayfx-icon-", ".png");
+            final java.awt.image.BufferedImage bufferedImage = new java.awt.image.BufferedImage((int) fxImage.getWidth(), (int) fxImage.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            final java.awt.Graphics2D          g2d           = bufferedImage.createGraphics();
+            g2d.setComposite(java.awt.AlphaComposite.Clear);
+            g2d.fillRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
+            g2d.dispose();
+            javafx.embed.swing.SwingFXUtils.fromFXImage(fxImage, bufferedImage);
+            javax.imageio.ImageIO.write(bufferedImage, "png", tmpFile);
+            return tmpFile;
+        } catch (final Exception ignored) {
+            return null;
+        }
     }
 
     private void registerWithWatcher(final String busName) {

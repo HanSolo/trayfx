@@ -7,7 +7,14 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.Graphics2D;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
+import java.awt.RenderingHints;
+import java.awt.SystemTray;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -23,7 +30,6 @@ import java.awt.image.BufferedImage;
  * which provides correct ARGB32 transparency and native menu rendering.
  * Falls back to {@code java.awt.SystemTray} (AWT/XEmbed) if D-Bus is not
  * available or the {@code dbus-java} library is not on the classpath.
- *
  * <p>The D-Bus implementation lives in {@link LinuxDbusImpl} which is only
  * compiled on Linux builds (excluded via {@code build.gradle} on macOS/Windows).
  * This class loads it reflectively so the source file itself compiles on all
@@ -33,8 +39,7 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
     private AbstractTrayIcon delegate;
 
     @Override protected void nativeInstall() {
-        // Try D-Bus first (only available on Linux with dbus-java on classpath)
-        if (isDbusAvailable()) { delegate = createDbusDelegate(); }
+        if (isDbusAvailable()) { delegate = createDbusDelegate(); }     // Try D-Bus first (only available on Linux with dbus-java on classpath)
         if (delegate == null) { delegate = new AwtTrayIconDelegate(); } // Fall back to AWT
 
         delegate.setOnLeftClick(getOnLeftClick());
@@ -139,8 +144,9 @@ public final class LinuxTrayIcon extends AbstractTrayIcon {
 
         @Override protected void nativeShowNotification(final String title, final String message) {
             offThread(() -> {
-                final java.awt.TrayIcon t = awtTrayIcon;
-                if (t != null) { t.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO); }
+                try {
+                    new ProcessBuilder("notify-send", "--app-name", "TrayFX", title != null ? title : "", message != null ? message : "").redirectErrorStream(true).start();
+                } catch (final Exception ignored) {}
             });
         }
 

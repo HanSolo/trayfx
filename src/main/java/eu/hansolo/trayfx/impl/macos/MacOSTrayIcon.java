@@ -7,7 +7,9 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.MenuItem;
+import java.awt.SystemTray;
 import java.awt.image.BufferedImage;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -95,7 +97,7 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
             final java.util.List<String> cmd = new java.util.ArrayList<>();
             cmd.add(helperPath);
             cmd.add("--title");
-            cmd.add(title   != null ? title   : "");
+            cmd.add(title != null ? title : "");
             cmd.add("--message");
             cmd.add(message != null ? message : "");
 
@@ -143,7 +145,6 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
         return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
-
     private void applyAwtMenu() {
         final java.awt.TrayIcon trayIcon = awtTrayIcon;
         if (trayIcon == null) { return; }
@@ -177,12 +178,10 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
         trayIcon.setPopupMenu(popup);
     }
 
-
     /**
      * Uses FFM to set NSVariableStatusItemLength (-1.0) on the NSStatusItem
      * that AWT created internally. This allows wide images to expand the
      * menu bar slot beyond the default square size.
-     *
      * We reach the NSStatusItem via reflection into AWT's peer class, then
      * call setLength: via the Objective-C runtime.
      */
@@ -194,24 +193,25 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
             final Object peer = peerField.get(awtTrayIcon);
             if (peer == null) { return; }
 
-            // The peer holds a reference to the native NSStatusItem pointer
-            // Try common field names used in different JDK implementations
             long statusItemPtr = 0;
             for (final String fieldName : new String[]{ "ptr", "statusItem", "nativeStatusItem", "model" }) {
                 try {
-                    final java.lang.reflect.Field f = peer.getClass().getDeclaredField(fieldName);
-                    f.setAccessible(true);
-                    final Object val = f.get(peer);
-                    if (val instanceof Long l) { statusItemPtr = l; break; }
+                    final java.lang.reflect.Field field = peer.getClass().getDeclaredField(fieldName);
+                    field.setAccessible(true);
+                    final Object value = field.get(peer);
+                    if (value instanceof Long l) {
+                        statusItemPtr = l;
+                        break;
+                    }
                 } catch (final NoSuchFieldException ignored) {}
             }
 
             if (statusItemPtr == 0) {
                 // Fall back: find any long field that looks like a pointer
-                for (final java.lang.reflect.Field f : peer.getClass().getDeclaredFields()) {
-                    if (f.getType() == long.class) {
-                        f.setAccessible(true);
-                        final long val = f.getLong(peer);
+                for (final java.lang.reflect.Field field : peer.getClass().getDeclaredFields()) {
+                    if (field.getType() == long.class) {
+                        field.setAccessible(true);
+                        final long val = field.getLong(peer);
                         if (val != 0) { statusItemPtr = val; break; }
                     }
                 }
@@ -233,14 +233,10 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
                 );
 
                 // Get selector for setLength:
-                final MethodHandle selRegister = linker.downcallHandle(
-                    objc.find("sel_registerName").orElseThrow(),
-                    FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
-                );
-
-                final MemorySegment selName = arena.allocateFrom("setLength:");
-                final MemorySegment sel     = (MemorySegment) selRegister.invoke(selName);
-                final MemorySegment item    = MemorySegment.ofAddress(statusItemPtr);
+                final MethodHandle  selRegister = linker.downcallHandle(objc.find("sel_registerName").orElseThrow(), FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+                final MemorySegment selName     = arena.allocateFrom("setLength:");
+                final MemorySegment sel         = (MemorySegment) selRegister.invoke(selName);
+                final MemorySegment item        = MemorySegment.ofAddress(statusItemPtr);
 
                 msgSendDouble.invoke(item, sel, NS_VARIABLE_STATUS_ITEM_LENGTH);
             }
@@ -248,7 +244,6 @@ public final class MacOSTrayIcon extends AbstractTrayIcon {
             // FFM not available or reflection failed — icon stays square
         }
     }
-
 
     private static BufferedImage toBufferedImage(final Image fxImage) {
         if (fxImage == null) { return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB); }

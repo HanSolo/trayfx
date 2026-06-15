@@ -7,7 +7,9 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.MenuItem;
+import java.awt.SystemTray;
 import java.awt.image.BufferedImage;
 
 
@@ -64,10 +66,7 @@ public final class WindowsTrayIcon extends AbstractTrayIcon {
     @Override protected void nativeUpdateMenu(final TrayMenu menu) { offThread(this::applyAwtMenu); }
 
     @Override protected void nativeShowNotification(final String title, final String message) {
-        offThread(() -> {
-            final java.awt.TrayIcon t = awtTrayIcon;
-            if (t != null) { t.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO); }
-        });
+        offThread(() -> WindowsToastNotifier.show(title, message, getIcon(), awtTrayIcon));
     }
 
 
